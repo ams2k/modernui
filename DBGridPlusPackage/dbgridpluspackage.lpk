@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <Name Value="DBGridPlusPackage"/>
+    <Type Value="RunAndDesignTime"/>
+    <Author Value="Aldo Márcio Soares"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <SearchPaths>
+        <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+      </SearchPaths>
+    </CompilerOptions>
+    <Description Value="DBGrid com visual mais moderno, com gradiente no título e na linha selecionada"/>
+    <License Value="Free"/>
+    <Version Major="1"/>
+    <Files>
+      <Item>
+        <Filename Value="dbgridplus.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="DBGridPlus"/>
+      </Item>
+    </Files>
+    <RequiredPkgs>
+      <Item>
+        <PackageName Value="LCL"/>
+      </Item>
+      <Item>
+        <PackageName Value="FCL"/>
+      </Item>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

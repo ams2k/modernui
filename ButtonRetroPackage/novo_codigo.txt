@@ -1,0 +1,267 @@
+unit ClassicVBButton;
+
+{$mode objfpc}{$H+}
+
+interface
+
+uses
+  Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs, Buttons,
+  ImgList, Windows;
+
+type
+  TImagePosition = (ipLeft, ipRight, ipTop, ipBottom, ipCenter);
+
+  TClassicVBButton = class(TCustomControl)
+  private
+    FDown: Boolean;
+    FMouseOver: Boolean;
+    FFocused: Boolean;
+    FFlatStyle: Boolean;
+    FImageList: TImageList;
+    FImageIndex: Integer;
+    FImagePosition: TImagePosition;
+    FClickSound: String;
+    FEnableClickSound: Boolean;
+    procedure SetImageList(AValue: TImageList);
+    procedure SetImageIndex(AValue: Integer);
+    procedure SetFlatStyle(AValue: Boolean);
+    procedure SetImagePosition(AValue: TImagePosition);
+    procedure SetClickSound(AValue: String);
+    procedure SetEnableClickSound(AValue: Boolean);
+  protected
+    procedure Paint; override;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure DoEnter; override;
+    procedure DoExit; override;
+    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
+    procedure KeyUp(var Key: Word; Shift: TShiftState); override;
+  public
+    constructor Create(AOwner: TComponent); override;
+  published
+    property Caption;
+    property Font;
+    property Align;
+    property Anchors;
+    property Enabled;
+    property Visible;
+    property TabOrder;
+    property TabStop;
+    property OnClick;
+    property FlatStyle: Boolean read FFlatStyle write SetFlatStyle default False;
+    property ImageList: TImageList read FImageList write SetImageList;
+    property ImageIndex: Integer read FImageIndex write SetImageIndex default -1;
+    property ImagePosition: TImagePosition read FImagePosition write SetImagePosition default ipLeft;
+    property ClickSound: String read FClickSound write SetClickSound;
+    property EnableClickSound: Boolean read FEnableClickSound write SetEnableClickSound default False;
+  end;
+
+procedure Register;
+
+implementation
+
+uses
+  MMSystem, Types;
+
+procedure Register;
+begin
+  RegisterComponents('Samples', [TClassicVBButton]);
+end;
+
+constructor TClassicVBButton.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  ControlStyle := [csCaptureMouse, csClickEvents, csSetCaption, csDoubleClicks];
+  Width := 80;
+  Height := 28;
+  TabStop := True;
+  FImageIndex := -1;
+  FImagePosition := ipLeft;
+end;
+
+procedure TClassicVBButton.SetImageList(AValue: TImageList);
+begin
+  FImageList := AValue;
+  Invalidate;
+end;
+
+procedure TClassicVBButton.SetImageIndex(AValue: Integer);
+begin
+  if FImageIndex <> AValue then
+  begin
+    FImageIndex := AValue;
+    Invalidate;
+  end;
+end;
+
+procedure TClassicVBButton.SetFlatStyle(AValue: Boolean);
+begin
+  if FFlatStyle <> AValue then
+  begin
+    FFlatStyle := AValue;
+    Invalidate;
+  end;
+end;
+
+procedure TClassicVBButton.SetImagePosition(AValue: TImagePosition);
+begin
+  if FImagePosition <> AValue then
+  begin
+    FImagePosition := AValue;
+    Invalidate;
+  end;
+end;
+
+procedure TClassicVBButton.SetClickSound(AValue: String);
+begin
+  FClickSound := AValue;
+end;
+
+procedure TClassicVBButton.SetEnableClickSound(AValue: Boolean);
+begin
+  FEnableClickSound := AValue;
+end;
+
+procedure TClassicVBButton.Paint;
+var
+  R: TRect;
+  Offset: Integer = 0;
+  TextRect: TRect;
+  ImgW, ImgH, ImgX, ImgY, TxtX, TxtY: Integer;
+begin
+  R := ClientRect;
+  Canvas.Brush.Color := clBtnFace;
+  Canvas.FillRect(R);
+
+  if not FFlatStyle then
+  begin
+    if FDown then
+      Frame3D(Canvas, R, clBtnShadow, clBtnHighlight, 1)
+    else
+      Frame3D(Canvas, R, clBtnHighlight, clBtnShadow, 1);
+  end;
+
+  InflateRect(R, -4, -4);
+
+  if FDown then Offset := 1;
+
+  Canvas.Font := Font;
+  TextRect := R;
+
+  ImgW := 0;
+  ImgH := 0;
+  if Assigned(FImageList) and (FImageIndex >= 0) then
+  begin
+    ImgW := FImageList.Width;
+    ImgH := FImageList.Height;
+  end;
+
+  TxtX := R.Left + Offset;
+  TxtY := R.Top + Offset;
+
+  case FImagePosition of
+    ipLeft:
+      begin
+        ImgX := R.Left + Offset;
+        ImgY := R.Top + (R.Height - ImgH) div 2 + Offset;
+        TxtX := ImgX + ImgW + 4;
+        TxtY := R.Top + (R.Height - Canvas.TextHeight(Caption)) div 2 + Offset;
+      end;
+    ipRight:
+      begin
+        TxtX := R.Left + Offset;
+        TxtY := R.Top + (R.Height - Canvas.TextHeight(Caption)) div 2 + Offset;
+        ImgX := R.Right - ImgW - 4 + Offset;
+        ImgY := R.Top + (R.Height - ImgH) div 2 + Offset;
+      end;
+    ipTop:
+      begin
+        ImgX := R.Left + (R.Width - ImgW) div 2 + Offset;
+        ImgY := R.Top + Offset;
+        TxtX := R.Left + (R.Width - Canvas.TextWidth(Caption)) div 2 + Offset;
+        TxtY := ImgY + ImgH + 4;
+      end;
+    ipBottom:
+      begin
+        TxtX := R.Left + (R.Width - Canvas.TextWidth(Caption)) div 2 + Offset;
+        TxtY := R.Top + Offset;
+        ImgX := R.Left + (R.Width - ImgW) div 2 + Offset;
+        ImgY := TxtY + Canvas.TextHeight(Caption) + 4;
+      end;
+    ipCenter:
+      begin
+        if ImgW > 0 then
+        begin
+          ImgX := R.Left + (R.Width - ImgW) div 2 + Offset;
+          ImgY := R.Top + (R.Height - ImgH) div 2 + Offset;
+        end;
+        TxtX := R.Left + (R.Width - Canvas.TextWidth(Caption)) div 2 + Offset;
+        TxtY := R.Top + (R.Height - Canvas.TextHeight(Caption)) div 2 + Offset;
+      end;
+  end;
+
+  if (FImageList <> nil) and (FImageIndex >= 0) then
+    FImageList.Draw(Canvas, ImgX, ImgY, FImageIndex, Enabled);
+
+  Canvas.TextOut(TxtX, TxtY, Caption);
+
+  if FFocused then
+    DrawFocusRect(Canvas.Handle, ClientRect);
+end;
+
+procedure TClassicVBButton.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited MouseDown(Button, Shift, X, Y);
+  FDown := True;
+  Invalidate;
+
+  if FEnableClickSound and FileExists(FClickSound) then
+    PlaySound(PChar(FClickSound), 0, SND_FILENAME or SND_ASYNC);
+end;
+
+procedure TClassicVBButton.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited MouseUp(Button, Shift, X, Y);
+  FDown := False;
+  Invalidate;
+  Click;
+end;
+
+procedure TClassicVBButton.DoEnter;
+begin
+  inherited DoEnter;
+  FFocused := True;
+  Invalidate;
+end;
+
+procedure TClassicVBButton.DoExit;
+begin
+  inherited DoExit;
+  FFocused := False;
+  Invalidate;
+end;
+
+procedure TClassicVBButton.KeyDown(var Key: Word; Shift: TShiftState);
+begin
+  inherited KeyDown(Key, Shift);
+  if (Key = VK_SPACE) or (Key = VK_RETURN) then
+  begin
+    FDown := True;
+    Invalidate;
+    if FEnableClickSound and FileExists(FClickSound) then
+      PlaySound(PChar(FClickSound), 0, SND_FILENAME or SND_ASYNC);
+  end;
+end;
+
+procedure TClassicVBButton.KeyUp(var Key: Word; Shift: TShiftState);
+begin
+  inherited KeyUp(Key, Shift);
+  if (Key = VK_SPACE) or (Key = VK_RETURN) then
+  begin
+    FDown := False;
+    Invalidate;
+    Click;
+  end;
+end;
+
+end.

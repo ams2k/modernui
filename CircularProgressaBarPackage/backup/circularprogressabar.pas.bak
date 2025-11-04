@@ -1,0 +1,247 @@
+unit CircularProgressaBar;
+
+// Circular Progress Bar
+
+{$mode ObjFPC}{$H+}
+
+interface
+
+uses
+  Classes, SysUtils, LCLType, LCLIntf, Controls, Graphics, ExtCtrls, Dialogs;
+
+type
+  TCircularProgressBar = class(TCustomControl)
+  private
+    FProgress: Integer;
+    FInfinite: Boolean;
+    FColor: TColor;
+    FBackgroundColor: TColor;
+    FThickness: Integer;
+    FAngle: Single;
+    FTimer: TTimer;
+    FMinValue: Integer;
+    FMaxValue: Integer;
+    FCurrentValue: Integer;
+    procedure SetProgress(Value: Integer);
+    procedure SetInfinite(Value: Boolean);
+    procedure SetColor(Value: TColor);
+    procedure SetBackgroundColor(Value: TColor);
+    procedure SetThickness(Value: Integer);
+    procedure SetMinValue(Value: Integer);
+    procedure SetMaxValue(Value: Integer);
+    procedure SetCurrentValue(Value: Integer);
+    procedure UpdateProgress;
+    procedure TimerTick(Sender: TObject);
+  protected
+    procedure Paint; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  published
+    property Progress: Integer read FProgress write SetProgress default 0;
+    property Infinite: Boolean read FInfinite write SetInfinite default False;
+    property Color: TColor read FColor write SetColor default clLime;
+    property BackgroundColor: TColor read FBackgroundColor write SetBackgroundColor default clBlack;
+    property Thickness: Integer read FThickness write SetThickness default 10;
+    property MinValue: Integer read FMinValue write SetMinValue default 0;
+    property MaxValue: Integer read FMaxValue write SetMaxValue default 100;
+    property CurrentValue: Integer read FCurrentValue write SetCurrentValue default 0;
+    property Align;
+    property Visible;
+    property Enabled;
+  end;
+
+procedure Register;
+
+implementation
+
+procedure Register;
+begin
+  {$I circularprogressabar_icon.lrs}
+  RegisterComponents('ModernUI',[TCircularProgressBar]);
+end;
+
+
+constructor TCircularProgressBar.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  Width := 100;
+  Height := 100;
+  FProgress := 0;
+  FInfinite := False;
+  FColor := clLime;
+  FBackgroundColor := clBlack;
+  FThickness := 10;
+  FAngle := 0;
+  FMinValue := 0;
+  FMaxValue := 100;
+  FCurrentValue := 0;
+
+  FTimer := TTimer.Create(Self);
+  FTimer.Interval := 50; // 20 FPS
+  FTimer.OnTimer := TimerTick;
+  FTimer.Enabled := FInfinite;
+end;
+
+destructor TCircularProgressBar.Destroy;
+begin
+  FTimer.Free;
+  inherited Destroy;
+end;
+
+procedure TCircularProgressBar.SetProgress(Value: Integer);
+begin
+  if FProgress <> Value then
+  begin
+    FProgress := EnsureRange(Value, 0, 100);
+    // Atualiza CurrentValue com base no Progress
+    if (FMaxValue > FMinValue) then
+      FCurrentValue := FMinValue + Round((FProgress / 100) * (FMaxValue - FMinValue));
+    Invalidate;
+  end;
+end;
+
+procedure TCircularProgressBar.SetInfinite(Value: Boolean);
+begin
+  if FInfinite <> Value then
+  begin
+    FInfinite := Value;
+    FTimer.Enabled := FInfinite;
+    Invalidate;
+  end;
+end;
+
+procedure TCircularProgressBar.SetColor(Value: TColor);
+begin
+  if FColor <> Value then
+  begin
+    FColor := Value;
+    Invalidate;
+  end;
+end;
+
+procedure TCircularProgressBar.SetBackgroundColor(Value: TColor);
+begin
+  if FBackgroundColor <> Value then
+  begin
+    FBackgroundColor := Value;
+    Invalidate;
+  end;
+end;
+
+procedure TCircularProgressBar.SetThickness(Value: Integer);
+begin
+  if FThickness <> Value then
+  begin
+    FThickness := EnsureRange(Value, 1, 50);
+    Invalidate;
+  end;
+end;
+
+procedure TCircularProgressBar.SetMinValue(Value: Integer);
+begin
+  if FMinValue <> Value then
+  begin
+    FMinValue := Value;
+    if FMaxValue <= FMinValue then
+      FMaxValue := FMinValue + 1;
+    UpdateProgress;
+    Invalidate;
+  end;
+end;
+
+procedure TCircularProgressBar.SetMaxValue(Value: Integer);
+begin
+  if FMaxValue <> Value then
+  begin
+    FMaxValue := Value;
+    if FMaxValue <= FMinValue then
+      FMaxValue := FMinValue + 1;
+    UpdateProgress;
+    Invalidate;
+  end;
+end;
+
+procedure TCircularProgressBar.SetCurrentValue(Value: Integer);
+begin
+  if FCurrentValue <> Value then
+  begin
+    FCurrentValue := EnsureRange(Value, FMinValue, FMaxValue);
+    UpdateProgress;
+    Invalidate;
+  end;
+end;
+
+procedure TCircularProgressBar.UpdateProgress;
+begin
+  if FMaxValue > FMinValue then
+    FProgress := Round(((FCurrentValue - FMinValue) / (FMaxValue - FMinValue)) * 100)
+  else
+    FProgress := 0;
+end;
+
+procedure TCircularProgressBar.TimerTick(Sender: TObject);
+begin
+  if FInfinite then
+  begin
+    FAngle := FAngle + 10;
+    if FAngle >= 360 then
+      FAngle := FAngle - 360;
+    Invalidate;
+  end;
+end;
+
+procedure TCircularProgressBar.Paint;
+var
+  CenterX, CenterY, Radius: Integer;
+  StartAngle, SweepAngle: Single;
+  Rect: TRect;
+  PercentText: string;
+  TextWidth, TextHeight: Integer;
+begin
+  inherited Paint;
+  Canvas.Brush.Color := FBackgroundColor;
+  Canvas.FillRect(ClientRect);
+
+  CenterX := Width div 2;
+  CenterY := Height div 2;
+  Radius := Min(Width, Height) div 2 - FThickness div 2;
+
+  Canvas.Pen.Color := FColor;
+  Canvas.Pen.Width := FThickness;
+  Canvas.Brush.Style := bsClear;
+
+  Rect := Bounds(CenterX - Radius, CenterY - Radius, Radius * 2, Radius * 2);
+
+  if FInfinite then
+  begin
+    StartAngle := FAngle;
+    SweepAngle := 90; // Arco de 90 graus para efeito infinito
+    Canvas.Arc(Rect.Left, Rect.Top, Rect.Right, Rect.Bottom,
+      Round(CenterX + Radius * Cos(DegToRad(StartAngle))),
+      Round(CenterY - Radius * Sin(DegToRad(StartAngle))),
+      Round(CenterX + Radius * Cos(DegToRad(StartAngle + SweepAngle))),
+      Round(CenterY - Radius * Sin(DegToRad(StartAngle + SweepAngle))));
+  end
+  else
+  begin
+    StartAngle := -90; // Começa do topo
+    SweepAngle := (FProgress / 100) * 360;
+    Canvas.Arc(Rect.Left, Rect.Top, Rect.Right, Rect.Bottom,
+      Round(CenterX + Radius * Cos(DegToRad(StartAngle))),
+      Round(CenterY - Radius * Sin(DegToRad(StartAngle))),
+      Round(CenterX + Radius * Cos(DegToRad(StartAngle + SweepAngle))),
+      Round(CenterY - Radius * Sin(DegToRad(StartAngle + SweepAngle))));
+
+    // Desenha o percentual no centro
+    Canvas.Font.Color := FColor;
+    Canvas.Font.Size := 10;
+    PercentText := Format('%d%%', [FProgress]);
+    TextWidth := Canvas.TextWidth(PercentText);
+    TextHeight := Canvas.TextHeight(PercentText);
+    Canvas.TextOut(CenterX - TextWidth div 2, CenterY - TextHeight div 2, PercentText);
+  end;
+end;
+
+end.
+

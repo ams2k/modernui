@@ -1,0 +1,347 @@
+unit LabelPlus;
+
+{$mode ObjFPC}{$H+}
+
+interface
+
+uses
+   Classes, SysUtils, Graphics, LCLType, LCLIntf, Controls, Types, LMessages,
+   LResources, ExtCtrls, StdCtrls, ImgList, Math;
+
+type
+  { TLabelPlus }
+
+  TLabelPlus = class(TLabel)
+  private
+    FBorderBottom: Boolean;
+    FBorderColor: TColor;
+    FBorderEnabled: Boolean;
+    FBorderLeft: Boolean;
+    FBorderRight: Boolean;
+    FBorderTop: Boolean;
+    FBorderWidth: Integer;
+    FBorderStyle: TPenStyle;
+    FBorderRadius: Integer;
+    FIcon: TPicture;
+    FIconVisible: Boolean;
+    FImageIndex: Integer;
+    FImages: TCustomImageList;
+    FGradient: Boolean;
+    FGradientColorOne: TColor;
+    FGradientColorTwo: TColor;
+
+    procedure SetBorderBottom(AValue: Boolean);
+    procedure SetBorderColor(AValue: TColor);
+    procedure SetBorderLeft(AValue: Boolean);
+    procedure SetBorderRight(AValue: Boolean);
+    procedure SetBorderStyle(AValue: TPenStyle);
+    procedure SetBorderTop(AValue: Boolean);
+    procedure SetBorderEnabled(AValue: Boolean);
+    procedure SetBorderWidth(AValue: Integer);
+    procedure SetBorderRadius(AValue: Integer);
+    procedure SetGradient(AValue: Boolean);
+    procedure SetGradientColorOne(AValue: TColor);
+    procedure SetGradientColorTwo(AValue: TColor);
+    procedure SetIconVisible(AValue: Boolean);
+    procedure SetIcon(AValue: TPicture);
+    function BorderCounter(): Integer;
+  protected
+    procedure Paint; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  published
+    property Images: TCustomImageList read FImages write FImages;
+    property ImageIndex: Integer read FImageIndex write FImageIndex default -1;
+    property Icon: TPicture read FIcon write SetIcon;
+    property IconVisible: Boolean read FIconVisible write SetIconVisible default False;
+    property BorderEnabled: Boolean read FBorderEnabled write SetBorderEnabled default True;
+    property BorderLeft: Boolean read FBorderLeft write SetBorderLeft default False;
+    property BorderRight: Boolean read FBorderRight write SetBorderRight default False;
+    property BorderTop: Boolean read FBorderTop write SetBorderTop default False;
+    property BorderBottom: Boolean read FBorderBottom write SetBorderBottom default False;
+    property BorderColor: TColor read FBorderColor write SetBorderColor default clGray;
+    property BorderRadius: Integer read FBorderRadius write SetBorderRadius default 12;
+    property BorderStyle: TPenStyle read FBorderStyle write SetBorderStyle default psSolid;
+    property BorderWidth: Integer read FBorderWidth write SetBorderWidth default 1;
+    property ShowGradient: Boolean read FGradient write SetGradient default False;
+    property ShowGradientColorOne: TColor read FGradientColorOne write SetGradientColorOne;
+    property ShowGradientColorTwo: TColor read FGradientColorTwo write SetGradientColorTwo;
+  end;
+
+procedure Register;
+
+implementation
+
+procedure Register;
+begin
+  {$I labelplus_icon.lrs}
+  RegisterComponents('ModernUI',[TLabelPlus]);
+end;
+
+{ TLabelPlus }
+
+constructor TLabelPlus.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+
+  //ParentColor := False;
+  //Color := parent.Color;
+  AutoSize := False;
+  Height := 20;
+
+  FImageIndex := -1;
+  FIcon := TPicture.Create;
+  FIconVisible := False;
+
+  FBorderLeft := False;
+  FBorderTop := False;
+  FBorderRight := False;
+  FBorderBottom := False;
+  FBorderEnabled := False;
+  FBorderColor := clGray;
+  FBorderRadius := 0;
+  FBorderStyle := psSolid;
+  FBorderWidth := 1;
+
+  FGradient := False;
+  FGradientColorOne := RGBToColor(45, 140, 206);
+  FGradientColorTwo := RGBToColor(177, 213, 238);
+end;
+
+destructor TLabelPlus.Destroy;
+begin
+  FIcon.Free;
+  inherited Destroy;
+end;
+
+procedure TLabelPlus.SetIcon(AValue: TPicture);
+begin
+   if Assigned(FIcon) then
+    FIcon.Assign(AValue);
+end;
+
+procedure TLabelPlus.SetIconVisible(AValue: Boolean);
+begin
+  if FIconVisible = AValue then Exit;
+  FIconVisible := AValue;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetGradient(AValue: Boolean);
+begin
+  if FGradient = AValue then Exit;
+  FGradient := AValue;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetGradientColorOne(AValue: TColor);
+begin
+  if FGradientColorOne = AValue then Exit;
+  FGradientColorOne := AValue;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetGradientColorTwo(AValue: TColor);
+begin
+  if FGradientColorTwo = AValue then Exit;
+  FGradientColorTwo := AValue;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetBorderLeft(AValue: Boolean);
+begin
+  if FBorderLeft = AValue then Exit;
+  FBorderLeft := AValue;
+  if AValue then FBorderEnabled := False;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetBorderRight(AValue: Boolean);
+begin
+  if FBorderRight = AValue then Exit;
+  FBorderRight := AValue;
+  if AValue then FBorderEnabled := False;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetBorderTop(AValue: Boolean);
+begin
+  if FBorderTop = AValue then Exit;
+  FBorderTop := AValue;
+  if AValue then FBorderEnabled := False;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetBorderBottom(AValue: Boolean);
+begin
+  if FBorderBottom = AValue then Exit;
+  FBorderBottom := AValue;
+  if AValue then FBorderEnabled := False;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetBorderStyle(AValue: TPenStyle);
+begin
+  if FBorderStyle = AValue then Exit;
+  FBorderStyle := AValue;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetBorderColor(AValue: TColor);
+begin
+  if FBorderColor = AValue then Exit;
+  FBorderColor := AValue;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetBorderEnabled(AValue: Boolean);
+begin
+  if FBorderEnabled = AValue then Exit;
+  FBorderEnabled := AValue;
+  FBorderLeft := AValue;
+  FBorderTop := AValue;
+  FBorderRight := AValue;
+  FBorderBottom := AValue;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetBorderWidth(AValue: Integer);
+begin
+  if FBorderWidth = AValue then Exit;
+  if AValue < 0 then AValue := 0;
+  FBorderWidth := AValue;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetBorderRadius(AValue: Integer);
+begin
+  if FBorderRadius = AValue then Exit;
+  FBorderRadius := AValue;
+  Invalidate;
+end;
+
+function TLabelPlus.BorderCounter(): Integer;
+begin
+  Result := 0;
+  if FBorderTop then Result := Result + 1;
+  if FBorderRight then Result := Result + 1;
+  if FBorderBottom then Result := Result + 1;
+  if FBorderLeft then Result := Result + 1;
+end;
+
+procedure TLabelPlus.Paint;
+var
+  R: TRect;
+  IconTop, TextTop, TotalHeight: Integer;
+  bIconVisible: Boolean;
+  TextSize: TSize;
+  IconSpace, IconW, IconH: Integer;
+  ContentLeft, lBorderCounter: Integer;
+begin
+  Canvas.Font := Font;
+  Canvas.Brush.Style := bsSolid;
+
+  R := ClientRect;
+  lBorderCounter := BorderCounter();
+
+  // preenchimento com a cor de fundo
+  if FGradient then begin
+    //com gradiente
+    Canvas.Pen.Style := psSolid;
+    Canvas.GradientFill(R, FGradientColorOne, FGradientColorTwo, gdVertical);
+  end else begin
+    //sem gradiente
+    Canvas.Brush.Color := Color;
+    Canvas.FillRect(R);
+  end;
+
+  // borda do componente
+  if (lBorderCounter > 0) then begin
+    Canvas.Pen.Style := FBorderStyle;
+    Canvas.Pen.Color := FBorderColor;
+    Canvas.Pen.Width := FBorderWidth;
+
+    if (lBorderCounter = 4) then begin
+      //borda completa
+      Canvas.Brush.Style := bsClear;
+      if FBorderRadius > 0 then
+        Canvas.RoundRect(R, FBorderRadius, FBorderRadius)
+      else
+        Canvas.Rectangle(R);
+    end
+    else begin
+      //bordas individuais
+      if FBorderTop then begin
+        // linha no Top do componente
+        Canvas.MoveTo(R.Left + 0, R.Top + 0);
+        Canvas.LineTo(R.Right - 1, R.Top + 0);
+      end;
+      if FBorderRight then begin
+        // linha no Right do componente
+        Canvas.MoveTo(R.Right - 1, R.Top + 0);
+        Canvas.LineTo(R.Right - 1, R.Bottom - 1);
+      end;
+      if FBorderBottom then begin
+        // linha no Bottom do componente
+        Canvas.MoveTo(R.Left + 0, R.Bottom - 1);
+        Canvas.LineTo(R.Right - 1, R.Bottom - 1);
+      end;
+      if FBorderLeft then begin
+        // linha no Left do componente
+        Canvas.MoveTo(R.Left + 0, R.Top + 0);
+        Canvas.LineTo(R.Left + 0, R.Bottom - 1);
+      end;
+    end;
+  end;
+
+  bIconVisible := FIconVisible and ((Assigned(FImages) and (FImageIndex >= 0)) or Assigned(FIcon.Graphic));
+
+  IconW := 0;
+  IconH := 0;
+
+  if Assigned(FImages) and (FImageIndex >= 0) then begin
+    IconW := FImages.Width;
+    IconH := FImages.Height;
+  end
+  else if Assigned(FIcon.Graphic) then begin
+    IconW := FIcon.Width;
+    IconH := FIcon.Height;
+  end;
+
+  IconSpace := IfThen(bIconVisible, IconW + 4, 0); // espaço reservado para ícone
+
+  // Texto
+  TextSize := Canvas.TextExtent(Caption);
+  TotalHeight := Max(TextSize.cy, IconH);
+
+  // Alinhamento horizontal
+  case Alignment of
+    taLeftJustify: ContentLeft := 2;
+    taCenter: ContentLeft := (Width - (TextSize.cx + IconSpace)) div 2;
+    taRightJustify: ContentLeft := Width - (TextSize.cx + IconSpace);
+  end;
+
+  // Alinhamento vertical
+  case Layout of
+    tlTop: TextTop := 1;
+    tlCenter: TextTop := (Height - TotalHeight) div 2 + 1;
+    tlBottom: TextTop := Height - TotalHeight;
+  end;
+
+  // Ícone
+  if bIconVisible then begin
+    IconTop := TextTop + (TextSize.cy - IconW) div 2 + 1;
+
+    if Assigned(FImages) and (FImageIndex >= 0) and (FImageIndex < FImages.Count) then
+      FImages.Draw(Canvas, ContentLeft, IconTop, FImageIndex, True)
+    else if Assigned(FIcon.Graphic) then
+      Canvas.Draw(ContentLeft, IconTop, FIcon.Graphic);
+  end;
+
+  // Texto
+  Canvas.Brush.Style := bsClear;
+  Canvas.TextOut(ContentLeft + IconSpace, TextTop, Caption);
+end;
+
+end.

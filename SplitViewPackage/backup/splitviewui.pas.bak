@@ -1,0 +1,612 @@
+unit SplitViewUI;
+
+// SplitView como o do Delphi, só que mais simplório.
+
+{$mode ObjFPC}{$H+}
+
+interface
+
+uses
+  Classes, SysUtils, Controls, Forms, ExtCtrls, Graphics, Types, LCLType, LCLIntf,
+  LResources, LMessages, ImgList, Math;
+
+type
+  TSplitViewMode = (svmInline, svmOverlay);
+  TSplitViewPlacement = (spLeft, spRight, spTop, spBottom);
+  TSplitViewOrientation = (svoVertical, svoHorizontal);
+  TSplitViewAnimationDirection = (sadHorizontal, sadVertical);
+  TSplitViewOpenedChangedEvent = procedure(Sender: TObject; Opened: Boolean) of object;
+
+  { TSplitViewUI }
+
+  TSplitViewUI = class(TCustomPanel)
+  private
+    FAnimationTimer: TTimer;
+    FContainer: TScrollBox;
+    FImageIndex: Integer;
+    FImageLeftStart: Integer;
+    FImages: TCustomImageList;
+    FSpacing: Integer;
+    FToggle: TCustomControl;
+
+    FOnOpening: TNotifyEvent;
+    FOnClosing: TNotifyEvent;
+
+    FAnimationDirection: TSplitViewAnimationDirection;
+    FMode: TSplitViewMode;
+    FOnOpenedChanged: TSplitViewOpenedChangedEvent;
+    FOrientation: TSplitViewOrientation;
+    FPlacement: TSplitViewPlacement;
+
+    FCompactSize: Integer;
+    FOpened: Boolean;
+    FOpenedSize: Integer;
+
+    FAnimationDuration: Integer;
+    FShowToggle: Boolean;
+    FTargetSize: Integer;
+    FToggleColor: TColor;
+    FToggleCaption: string;
+    FUseGradient: Boolean;
+
+    procedure AnimateStep(Sender: TObject);
+    procedure DrawToggle(Sender: TObject);
+    procedure SetColor(AValue: TColor); override;
+    procedure SetCompactSize(AValue: Integer);
+    procedure SetImageIndex(AValue: Integer);
+    procedure SetImageLeftStart(AValue: Integer);
+    procedure SetMode(AValue: TSplitViewMode);
+    procedure SetOpened(AValue: Boolean);
+    procedure SetOpenedSize(AValue: Integer);
+    procedure SetOrientation(AValue: TSplitViewOrientation);
+    procedure SetPlacement(AValue: TSplitViewPlacement);
+    procedure SetShowToggle(AValue: Boolean);
+    procedure SetSpacing(AValue: Integer);
+    procedure SetToggleColor(AValue: TColor);
+    procedure SetToggleCaption(AValue: string);
+    procedure SetUseGradient(AValue: Boolean);
+    procedure ToggleClick(Sender: TObject);
+    function LightenColor(AColor: TColor; Percent: Integer): TColor;
+  protected
+    procedure Resize; override;
+    procedure Paint; override;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    property ContentPanel: TScrollBox read FContainer;
+    procedure CloseAllChildSplitViews;
+    procedure Toggle;
+  published
+    property AnimationDuration: Integer read FAnimationDuration write FAnimationDuration default 200;
+    property AnimationDirection: TSplitViewAnimationDirection read FAnimationDirection write FAnimationDirection default sadHorizontal;
+    property CompactSize: Integer read FCompactSize write SetCompactSize default 48;
+    property GradientEnabled: Boolean read FUseGradient write SetUseGradient default False;
+    property Images: TCustomImageList read FImages write FImages;
+    property ImageIndex: Integer read FImageIndex write SetImageIndex default -1;
+    property ImageLeftStart: Integer read FImageLeftStart write SetImageLeftStart default 4;
+    property Mode: TSplitViewMode read FMode write SetMode default svmInline;
+    property OnOpenedChanged: TSplitViewOpenedChangedEvent read FOnOpenedChanged write FOnOpenedChanged;
+    property OnOpening: TNotifyEvent read FOnOpening write FOnOpening;
+    property OnClosing: TNotifyEvent read FOnClosing write FOnClosing;
+    property Opened: Boolean read FOpened write SetOpened default True;
+    property OpenedSize: Integer read FOpenedSize write SetOpenedSize default 200;
+    property Orientation: TSplitViewOrientation read FOrientation write SetOrientation default svoVertical;
+    property Placement: TSplitViewPlacement read FPlacement write SetPlacement default spLeft;
+    property Spacing: Integer read FSpacing write SetSpacing;
+    property ToggleMenuVisible: Boolean read FShowToggle write SetShowToggle default True;
+    property ToggleMenuText: string read FToggleCaption write SetToggleCaption;
+    property ToggleMenuColor: TColor read FToggleColor write SetToggleColor default clBlack;
+
+    property Align;
+    property Alignment;
+    property Anchors;
+    property BorderStyle;
+    property Caption;
+    property Color;
+    property Enabled;
+    property Font;
+    property ParentFont;
+    property ParentColor;
+    property Visible;
+    property ShowHint;
+    property OnClick;
+    property OnEnter;
+    property OnExit;
+    property OnMouseDown;
+    property OnMouseEnter;
+    property OnMouseLeave;
+    property OnMouseMove;
+    property OnMouseUp;
+    property TabOrder;
+    property TabStop;
+  end;
+
+procedure Register;
+
+implementation
+
+uses
+  SplitViewButton;
+
+procedure Register;
+begin
+  {$I splitviewui_icon.lrs}
+  RegisterComponents('ModernUI',[TSplitViewUI]);
+end;
+
+{ TSplitViewUI }
+
+constructor TSplitViewUI.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  Align := alLeft;
+  Alignment := taLeftJustify;
+  Color := $2E2E2E;
+  BorderStyle := bsNone;
+  Font.Color := clWhite;
+
+  FAnimationDirection := sadHorizontal;
+  FAnimationDuration := 200;
+  FOpenedSize := 200;
+  FCompactSize := 45;
+  FOrientation := svoVertical;
+  FImageIndex := -1;
+  FImageLeftStart := 4;
+  FOpened := True;
+  FMode := svmInline;
+  FPlacement := spLeft;
+  FShowToggle := True;
+  FSpacing := 8;
+  FToggleCaption := 'Menu';
+  FToggleColor := clBlack;
+  FUseGradient := False;
+
+  // timer para animação
+  FAnimationTimer := TTimer.Create(Self);
+  FAnimationTimer.Enabled := False;
+  FAnimationTimer.Interval := 15;
+  FAnimationTimer.OnTimer := @AnimateStep;
+
+  // container para organizar os filhos
+  FContainer := TScrollBox.Create(Self);
+  FContainer.Parent := Self;
+  FContainer.Align := alClient;
+  FContainer.AutoScroll := True;
+  FContainer.BorderStyle := bsNone;
+  FContainer.Caption := Self.Name;
+  FContainer.Color := Color;
+  FContainer.Name := 'SplitViewUI';
+
+  // botão de toggle
+  FToggle := TCustomControl.Create(Self);
+  FToggle.Parent := Self;
+  FToggle.Align := alTop;
+  FToggle.BorderStyle := bsNone;
+  FToggle.Caption := FToggleCaption;
+  FToggle.Color := Color;
+  FToggle.Cursor := crHandPoint;
+  FToggle.Font := Font;
+  FToggle.Height := 40;
+  FToggle.Hint := '';
+  FToggle.OnClick := @ToggleClick;
+  FToggle.OnPaint := @DrawToggle;
+  FToggle.ShowHint := True;
+  FToggle.Width := 40;
+
+  SetPlacement(FPlacement);
+end;
+
+destructor TSplitViewUI.Destroy;
+begin
+  FAnimationTimer.Free;
+  inherited Destroy;
+end;
+
+procedure TSplitViewUI.Paint;
+//desenha o fundo do SplitView
+var
+  R: TRect;
+begin
+  inherited Paint;
+
+  R := ClientRect;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := Color;
+  Canvas.FillRect(R);
+end;
+
+procedure TSplitViewUI.Notification(AComponent: TComponent; Operation: TOperation);
+// garantir que qualquer controle que não seja o próprio ContentPanel
+// ou o botão vá para dentro do ContentPanel
+begin
+  inherited Notification(AComponent, Operation);
+
+  // só funciona EM TEMPO DE EXECUÇÃO
+  if not (csDesigning in ComponentState) then begin
+    if (Operation = opInsert) and (AComponent is TControl) then begin
+      if Assigned(FContainer) and
+         (AComponent <> FContainer) and
+         (AComponent <> FToggle) and
+         (TControl(AComponent).Parent = Self) then
+      begin
+        TControl(AComponent).Parent := FContainer;
+      end;
+    end;
+  end;
+end;
+
+procedure TSplitViewUI.Resize;
+//redimencionamento do SplitView
+begin
+  inherited Resize;
+  Visible := (Width>1) or (Height>1);
+end;
+
+procedure TSplitViewUI.SetColor(AValue: TColor);
+//define a cor de fundo do SplitView
+begin
+  inherited SetColor(AValue);
+  if Assigned(FContainer) then
+    FContainer.Color := AValue;
+end;
+
+procedure TSplitViewUI.CloseAllChildSplitViews;
+//fecha os SplitView filhos que estiverem abertos
+var
+  i: Integer;
+  c: TControl;
+begin
+  for i := 0 to ControlCount - 1 do begin
+    c := Controls[i];
+
+    { SplitViewUI interno }
+    if c is TSplitViewUI then
+      TSplitViewUI(c).Opened := False; //fecha
+  end;
+end;
+
+procedure TSplitViewUI.SetMode(AValue: TSplitViewMode);
+//define o modo de exibição do SplitView na tela
+begin
+  if FMode <> AValue then begin
+    FMode := AValue;
+    if FMode = svmOverlay then
+      BringToFront
+    else
+      SendToBack;
+  end;
+end;
+
+procedure TSplitViewUI.SetOpenedSize(AValue: Integer);
+//define o tamanho do SplitView quando estiver expandido/aberto
+begin
+  if FOpenedSize = AValue then Exit;
+  FOpenedSize := AValue;
+  if FOpened and (not FAnimationTimer.Enabled) then begin
+    if FAnimationDirection = sadHorizontal then
+      Width := FOpenedSize
+    else
+      Height := FOpenedSize;
+  end;
+end;
+
+procedure TSplitViewUI.SetPlacement(AValue: TSplitViewPlacement);
+// controla onde o painel do SplitView vai aparecer no formulário, ou seja,
+// à esquerda, à direita, no topo ou no rodape da tela.
+begin
+  if FPlacement <> AValue then begin
+    FPlacement := AValue;
+    case FPlacement of
+      spLeft:
+      begin
+        Align := alLeft;
+        FToggle.Align := alTop;
+        FAnimationDirection := sadHorizontal;
+      end;
+      spRight:
+      begin
+        Align := alRight;
+        FToggle.Align := alTop;
+        FAnimationDirection := sadHorizontal;
+      end;
+      spTop:
+      begin
+        Align := alTop;
+        FToggle.Align := alLeft;
+        FAnimationDirection := sadVertical;
+      end;
+      spBottom:
+      begin
+        Align := alBottom;
+        FToggle.Align := alLeft;
+        FAnimationDirection := sadVertical;
+      end;
+    end;
+  end;
+end;
+
+procedure TSplitViewUI.SetOrientation(AValue: TSplitViewOrientation);
+// permitir ajustar o alinhamento dos controles filhos dentro do ContentPanel,
+// ou seja, o que estiver “dentro” do SplitView.
+var
+  i: Integer;
+begin
+  if FOrientation <> AValue then begin
+    FOrientation := AValue;
+
+    for i := 0 to FContainer.ControlCount - 1 do begin
+      if AValue = svoVertical then
+        FContainer.Controls[i].Align := alTop
+      else
+        FContainer.Controls[i].Align := alLeft;
+    end;
+
+    FContainer.Invalidate;
+  end;
+end;
+
+procedure TSplitViewUI.SetShowToggle(AValue: Boolean);
+//exibe ou esconde o botão de menu
+begin
+  if FShowToggle <> AValue then begin
+    FShowToggle := AValue;
+    if Assigned(FToggle) then begin
+      FToggle.Visible := FShowToggle;
+
+      if AValue then
+        FToggle.Height := 40
+      else
+        FToggle.Height := 0;
+
+      FToggle.Invalidate;
+    end;
+  end;
+end;
+
+procedure TSplitViewUI.SetSpacing(AValue: Integer);
+begin
+  if FSpacing = AValue then Exit;
+  FSpacing := AValue;
+  FToggle.Invalidate;
+end;
+
+procedure TSplitViewUI.SetOpened(AValue: Boolean);
+//expande ou encolhe o componente
+begin
+  if FOpened <> AValue then begin
+    if AValue then begin { Abrindo }
+      if (Parent is TSplitViewUI) and not (TSplitViewUI(Parent).Opened) then
+         TSplitViewUI(Parent).Opened := True;
+
+      if Assigned(FOnOpening) then
+        FOnOpening(Self);
+    end
+    else begin  { Fechando }
+      //fecha os filhos TSplitViewUI
+      CloseAllChildSplitViews;
+
+      if Assigned(FOnClosing) then
+        FOnClosing(Self);
+    end;
+
+    FOpened := AValue;
+
+    if FOpened then
+      FTargetSize := FOpenedSize
+    else
+      FTargetSize := FCompactSize;
+
+    FAnimationTimer.Enabled := True;
+    FToggle.Invalidate;
+  end;
+end;
+
+procedure TSplitViewUI.SetCompactSize(AValue: Integer);
+//tamanho compacto do SplitView quando encolhido/fechado
+begin
+  if FCompactSize = AValue then Exit;
+  FCompactSize := AValue;
+  if not FOpened and (not FAnimationTimer.Enabled) then begin
+    if FAnimationDirection = sadHorizontal then
+      Width := FCompactSize
+    else
+      Height := FCompactSize;
+  end;
+end;
+
+procedure TSplitViewUI.SetImageIndex(AValue: Integer);
+//ícone no botão toggle
+begin
+  if FImageIndex = AValue then Exit;
+  FImageIndex := AValue;
+  FToggle.Invalidate;
+end;
+
+procedure TSplitViewUI.SetImageLeftStart(AValue: Integer);
+begin
+  if FImageLeftStart = AValue then Exit;
+  FImageLeftStart := AValue;
+  FToggle.Invalidate;
+end;
+
+procedure TSplitViewUI.AnimateStep(Sender: TObject);
+//animação da abertura ou encolhimento do SplitView
+var
+  delta: Integer;
+  alpha: Double;
+  curSize, targetSize: Integer;
+begin
+  alpha := 0.3;
+
+  if FAnimationDirection = sadHorizontal then
+    curSize := Width
+  else
+    curSize := Height;
+
+  targetSize := FTargetSize;
+
+  if FOpened then { abrindo... }
+  begin
+    if not Visible then Visible := True;
+    if curSize < targetSize then begin
+      delta := Round((targetSize - curSize) * alpha);
+      if delta < 1 then delta := 1;
+      curSize := curSize + delta;
+      if curSize >= targetSize then begin
+        curSize := targetSize;
+        FAnimationTimer.Enabled := False;
+        if Assigned(FOnOpenedChanged) then
+          FOnOpenedChanged(Self, FOpened);
+      end;
+    end
+    else
+      FAnimationTimer.Enabled := False;
+  end
+  else begin { fechando... }
+    if curSize > targetSize then begin
+      delta := Round((targetSize - curSize) * alpha);
+      if delta > -1 then delta := -1;
+      curSize := curSize + delta;
+      if curSize <= targetSize then begin
+        curSize := targetSize;
+        FAnimationTimer.Enabled := False;
+        if Assigned(FOnOpenedChanged) then
+          FOnOpenedChanged(Self, FOpened);
+      end;
+    end
+    else
+      FAnimationTimer.Enabled := False;
+    Visible := (Width>1) or (Height>1);
+  end;
+
+  if FAnimationDirection = sadHorizontal then
+    Width := curSize
+  else
+    Height := curSize;
+
+  Invalidate;
+end;
+
+procedure TSplitViewUI.SetToggleColor(AValue: TColor);
+begin
+  if FToggleColor = AValue then Exit;
+  FToggleColor := AValue;
+  FToggle.Color := AValue;
+  FToggle.Invalidate;
+end;
+
+procedure TSplitViewUI.SetToggleCaption(AValue: string);
+begin
+  if FToggleCaption = AValue then Exit;
+  FToggleCaption := AValue;
+  DrawToggle(FToggle);
+end;
+
+procedure TSplitViewUI.SetUseGradient(AValue: Boolean);
+begin
+  if FUseGradient = AValue then Exit;
+  FUseGradient := AValue;
+  FToggle.Invalidate;
+end;
+
+procedure TSplitViewUI.Toggle;
+begin
+  SetOpened(not FOpened);
+end;
+
+procedure TSplitViewUI.ToggleClick(Sender: TObject);
+begin
+  Toggle;
+end;
+
+function TSplitViewUI.LightenColor(AColor: TColor; Percent: Integer): TColor;
+// retorna uma cor com um percentual da cor indicada em AColor
+var
+  R, G, B: Integer;
+begin
+  R := GetRValue(AColor);
+  G := GetGValue(AColor);
+  B := GetBValue(AColor);
+
+  R := Round(R + (255 - R) * (Percent / 100));
+  G := Round(G + (255 - G) * (Percent / 100));
+  B := Round(B + (255 - B) * (Percent / 100));
+
+  Result := RGBToColor(R, G, B);
+end;
+
+procedure TSplitViewUI.DrawToggle(Sender: TObject);
+//botão toggle para exibir ou esconder o menu
+var
+  c: TCustomControl;
+  IconTop, TextTop, TotalHeight: Integer;
+  bIconVisible: Boolean;
+  TextSize: TSize;
+  IconSpace, IconW, IconH: Integer;
+  ContentLeft: Integer;
+  Color1, Color2: TColor;
+begin
+  if not FShowToggle then Exit;
+
+  c := TCustomControl(Sender);
+  c.Canvas.Font := Font;
+  c.Canvas.Brush.Style := bsSolid;
+  c.Canvas.Brush.Color := FToggleColor;
+  c.Canvas.Brush.Style := bsSolid;
+
+  // cor de fundo
+  if FUseGradient  then begin
+    // gradiente de fundo do botão
+    Color1 := Color;
+    Color2 := LightenColor(Color, 55);
+
+    // Desenha o gradiente
+    c.Canvas.Pen.Style := psSolid;
+    c.Canvas.GradientFill(c.ClientRect, Color1, Color2, gdVertical);
+  end else begin
+    // fundo sem gradiente
+    c.Canvas.FillRect(c.ClientRect);
+  end;
+
+  bIconVisible := Assigned(FImages) and (FImageIndex >= 0);
+  IconW := 0;
+  IconH := 0;
+
+  if Assigned(FImages) and (FImageIndex >= 0) then begin
+    IconW := FImages.Width;
+    IconH := FImages.Height;
+  end;
+
+  IconSpace := IfThen(bIconVisible, IconW + 4, 0); // espaço reservado para ícone
+
+  // Texto
+  TextSize := c.Canvas.TextExtent(FToggleCaption);
+  TotalHeight := Max(TextSize.cy, IconH);
+
+  // Alinhamento horizontal
+  case Alignment of
+    taLeftJustify: ContentLeft := 2 + FImageLeftStart; //distanciamento da esquerda ;
+    taCenter: ContentLeft := (c.Width - (TextSize.cx + IconSpace)) div 2;
+    taRightJustify: ContentLeft := c.Width - (TextSize.cx + IconSpace);
+  end;
+
+  // Alinhamento vertical
+  TextTop := (c.Height - TotalHeight) div 2 + 1;
+
+  // Ícone
+  if bIconVisible then begin
+    IconTop := TextTop + (TextSize.cy - IconW) div 2 + 1;
+
+    if Assigned(FImages) and (FImageIndex >= 0) and (FImageIndex < FImages.Count) then
+      FImages.Draw(c.Canvas, ContentLeft, IconTop, FImageIndex, True);
+  end;
+
+  // Texto
+  if (FToggleCaption <> '') then begin
+    c.Canvas.Brush.Style := bsClear;
+    c.Canvas.TextOut(ContentLeft + IconSpace + FSpacing, TextTop, FToggleCaption);
+  end;
+end;
+
+end.

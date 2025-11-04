@@ -1,0 +1,219 @@
+unit CheckBoxPlus;
+
+// Checkbox com check feito com ícone
+
+{$mode ObjFPC}{$H+}
+
+interface
+
+uses
+  Classes, SysUtils, Controls, StdCtrls, Graphics, LResources, LCLType, LMessages, Types;
+
+type
+
+  { TCheckboxPlus }
+
+  TCheckboxPlus = class(TCustomControl)
+  private
+    FBorderColor: TColor;
+    FBorderEnabled: Boolean;
+    FBorderLineStyle: TPenStyle;
+    FBorderLineWidth: Integer;
+    FCheckedImage: TPicture;
+    FBorderRadius: Integer;
+    FOnChange: TNotifyEvent;
+    FUncheckedImage: TPicture;
+    FChecked: Boolean;
+    FCaption: string;
+    procedure SetBorderEnabled(AValue: Boolean);
+    procedure SetBorderLineStyle(AValue: TPenStyle);
+    procedure SetBorderLineWidth(AValue: Integer);
+    procedure SetChecked(Value: Boolean);
+    procedure SetCaption(const Value: string);
+    procedure Click; override;
+    procedure SetBorderRadius(AValue: Integer);
+  protected
+    procedure Paint; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  published
+    property Align;
+    property Anchors;
+    property Autosize;
+    property Color;
+    property Cursor;
+    property Enabled;
+    property Font;
+    property Height;
+    property PopupMenu;
+    property ShowHint;
+    property TabOrder;
+    property TabStop;
+    property Visible;
+    property OnClick;
+    property OnEnter;
+    property OnExit;
+    property OnMouseDown;
+    property OnMouseEnter;
+    property OnMouseLeave;
+    property OnMouseMove;
+    property OnMouseUp;
+
+    property OnChange: TNotifyEvent read FOnChange write FOnChange;
+    property Checked: Boolean read FChecked write SetChecked default False;
+    property Caption: string read FCaption write SetCaption;
+
+    property BorderEnabled: Boolean read FBorderEnabled write SetBorderEnabled default False;
+    property BorderColor: TColor read FBorderColor write FBorderColor default clGray;
+    property BorderRadius: Integer read FBorderRadius write SetBorderRadius default 6;
+    property BorderStyle: TPenStyle read FBorderLineStyle write SetBorderLineStyle default psSolid;
+    property BorderWidth: Integer read FBorderLineWidth write SetBorderLineWidth default 1;
+  end;
+
+procedure Register;
+
+implementation
+
+procedure Register;
+begin
+  {$I checkboxplus_icon.lrs}
+  RegisterComponents('ModernUI',[TCheckBoxPlus]);
+end;
+
+constructor TCheckboxPlus.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FCheckedImage := TPicture.Create;
+  FUncheckedImage := TPicture.Create;
+
+  // Carregar recursos Lazarus
+  FCheckedImage.LoadFromLazarusResource('checked_icon');
+  FUncheckedImage.LoadFromLazarusResource('unchecked_icon');
+
+  Width := 100;
+  Height := 24;
+  FCaption := 'Checkbox';
+  FChecked := False;
+  FBorderEnabled := False;
+  FBorderColor := clGray;
+  FBorderRadius := 0;
+  FBorderLineStyle := psSolid;
+  FBorderLineWidth := 1;
+  AutoSize := True;
+end;
+
+destructor TCheckboxPlus.Destroy;
+begin
+  FCheckedImage.Free;
+  FUncheckedImage.Free;
+  inherited Destroy;
+end;
+
+procedure TCheckboxPlus.SetChecked(Value: Boolean);
+begin
+  if FChecked <> Value then
+  begin
+    FChecked := Value;
+    Invalidate;
+  end;
+end;
+
+procedure TCheckboxPlus.SetBorderEnabled(AValue: Boolean);
+begin
+  if FBorderEnabled = AValue then Exit;
+  FBorderEnabled := AValue;
+  Invalidate;
+end;
+
+procedure TCheckboxPlus.SetBorderLineStyle(AValue: TPenStyle);
+begin
+  if FBorderLineStyle = AValue then Exit;
+  FBorderLineStyle := AValue;
+  Invalidate;
+end;
+
+procedure TCheckboxPlus.SetBorderLineWidth(AValue: Integer);
+begin
+  if FBorderLineWidth = AValue then Exit;
+  FBorderLineWidth := AValue;
+  Invalidate;
+end;
+
+procedure TCheckboxPlus.SetCaption(const Value: string);
+begin
+  if FCaption <> Value then
+  begin
+    FCaption := Value;
+    Invalidate;
+  end;
+end;
+
+procedure TCheckboxPlus.Click;
+begin
+  inherited Click;
+  Checked := not Checked;
+
+  if Assigned(FOnChange) then
+    FOnChange(Self);
+end;
+
+procedure TCheckboxPlus.SetBorderRadius(AValue: Integer);
+begin
+  if FBorderRadius = AValue then Exit;
+  FBorderRadius := AValue;
+end;
+
+procedure TCheckboxPlus.Paint;
+var
+  R: TRect;
+  TextSize: TSize;
+  TextTop, TotalHeight, lLeft: Integer;
+  CurrentImage: TPicture;
+begin
+  TextSize := Canvas.TextExtent(Caption);
+  lLeft := 2;
+
+  if AutoSize then
+    Width := 30 + TextSize.cx + 5;
+
+  R := ClientRect;
+
+  // Limpar o fundo
+  Canvas.Brush.Color := Self.Color;
+  Canvas.FillRect(R);
+
+  if FBorderEnabled then begin
+    lLeft := lLeft + 2;
+    Canvas.Brush.Style := bsClear;
+    Canvas.Pen.Style := FBorderLineStyle;
+    Canvas.Pen.Color := FBorderColor;
+    Canvas.Pen.Width := FBorderLineWidth;
+
+    if FBorderRadius > 0 then
+      Canvas.RoundRect(R, FBorderRadius, FBorderRadius)
+    else
+      Canvas.Rectangle(R);
+  end;
+
+  // Desenhar o caption
+  Canvas.Font := Self.Font;
+  TextSize := Canvas.TextExtent(Caption);
+  Canvas.TextOut(lLeft + 25, (R.Height - TextSize.cy) div 2, Caption);
+
+  // Selecionar a imagem com base no estado do checkbox
+  if Checked and (FCheckedImage.Graphic <> nil) then
+    CurrentImage := FCheckedImage
+  else if not Checked and (FUncheckedImage.Graphic <> nil) then
+    CurrentImage := FUncheckedImage
+  else
+    Exit;
+
+  // Desenhar a box e o ícone
+  Canvas.Draw(lLeft, (R.Height - TextSize.cy) div 2, CurrentImage.Graphic); // Desenha o ícone dentro da box
+end;
+
+initialization
+  {$I icones.lrs}
+
+end.

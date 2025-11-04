@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Lazarus Version="3.4"/>
+  <Compiler Value="/opt/fpcupdeluxe/fpc/bin/x86_64-linux/fpc.sh" Date="1751388187"/>
+  <Params Value=" -MObjFPC -Scghi -Cg -O1 -g -gl -l -vewnhibq -Fu/opt/fpcupdeluxe/lazarus/packager/units/x86_64-linux -Fu/opt/fpcupdeluxe/lazarus/components/lazutils/lib/x86_64-linux -Fu/opt/fpcupdeluxe/lazarus/components/freetype/lib/x86_64-linux -Fu/opt/fpcupdeluxe/lazarus/lcl/units/x86_64-linux -Fu/opt/fpcupdeluxe/lazarus/lcl/units/x86_64-linux/gtk2 -Fu/home/marcio/dev-projetos/lazarus/morderui-packages/ToggleButtonPlusPackage/ -FU/home/marcio/dev-projetos/lazarus/morderui-packages/ToggleButtonPlusPackage/lib/x86_64-linux/ -dLCL -dLCLgtk2 togglebuttonpluspackage.pas"/>
+</CONFIG>
