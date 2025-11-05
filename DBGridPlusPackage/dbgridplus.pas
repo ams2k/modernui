@@ -297,11 +297,11 @@ begin
   FGridRows := AValue;
 
   if FGridRows > 0 then
-    Height := DefaultRowHeight * (AValue + 1) + AValue;
+    Height := DefaultRowHeight * AValue + DefaultRowHeight * 2;
 
   FGridRows := 0;
 
-  invalidate;
+  Invalidate;
 end;
 
 procedure TDBGridPlus.SetHeaderGradient(AValue: Boolean);

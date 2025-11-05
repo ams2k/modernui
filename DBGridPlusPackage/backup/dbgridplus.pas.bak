@@ -297,11 +297,11 @@ begin
   FGridRows := AValue;
 
   if FGridRows > 0 then
-    Height := DefaultRowHeight * (AValue + 1) + AValue;
+    Height := DefaultRowHeight * AValue;
 
   FGridRows := 0;
 
-  invalidate;
+  Invalidate;
 end;
 
 procedure TDBGridPlus.SetHeaderGradient(AValue: Boolean);
@@ -422,7 +422,7 @@ begin
   FColumnTitleColor := clBtnFace;
   FColumnFontColor  := clBlack;
 
-  Options := [dgTitles,dgColumnResize,dgColumnMove,dgColLines,dgRowLines,dgTabs,dgRowSelect,dgConfirmDelete,dgCancelOnExit];
+  Options := [dgTitles,dgColumnResize,dgColumnMove,dgColLines,dgRowLines,dgTabs,dgRowSelect,dgConfirmDelete,dgCancelOnExit,dgDisplayMemoText];
 
   case APreset of
     gsDefault:
@@ -494,7 +494,7 @@ begin
         GridLinesColor := $00F3E4D5;
         GridLinesStyle := psDash;
         HeaderGradient := False;
-        Options := [dgTitles,dgColumnResize,dgColumnMove,dgRowLines,dgTabs,dgRowSelect,dgConfirmDelete,dgCancelOnExit];
+        Options := [dgTitles,dgColumnResize,dgColumnMove,dgRowLines,dgTabs,dgRowSelect,dgConfirmDelete,dgCancelOnExit,dgDisplayMemoText];
         RowGradientOnSelected := False;
         SelectedRowColor := $00F5F4E6;
         SelectedRowFontColor := $00842323;
