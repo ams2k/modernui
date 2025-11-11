@@ -6,6 +6,7 @@ Components Packages for Lazarus / FreePascal
 
 - ButtonPlusPackage: Botão com novo visual.
 - ButtonRetroPackage: Botão retrô estilo windows.
+- ChasePanelPackage: Painel animado (Marquee Frame).
 - CheckboxPlusPackage: Checkbox com visual diferente.
 - CircularProgressBarPackage: Progresso circular.
 - DBGridPlusPackage: DBGrid com visual moderno, bordas, gradiente.
