@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Lazarus Version="3.4"/>
+  <Compiler Value="/opt/fpcupdeluxe/fpc/bin/x86_64-linux/fpc.sh" Date="1751388187"/>
+  <Params Value=" -Twin64 -MObjFPC -Scghi -O1 -g -gl -l -vewnhibq -Fu/opt/fpcupdeluxe/lazarus/packager/units/x86_64-win64 -Fu/opt/fpcupdeluxe/lazarus/components/lazutils/lib/x86_64-win64 -Fu/opt/fpcupdeluxe/lazarus/components/freetype/lib/x86_64-win64 -Fu/opt/fpcupdeluxe/lazarus/lcl/units/x86_64-win64 -Fu/opt/fpcupdeluxe/lazarus/lcl/units/x86_64-win64/win32 -Fu/home/marcio/dev-projetos/lazarus/morderui-packages/ChasePanelPackage/ -FU/home/marcio/dev-projetos/lazarus/morderui-packages/ChasePanelPackage/lib/x86_64-win64/ -dLCL -dLCLwin32 chasepanelpackage.pas"/>
+</CONFIG>

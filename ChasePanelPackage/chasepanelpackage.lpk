@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <Name Value="ChasePanelPackage"/>
+    <Type Value="RunAndDesignTime"/>
+    <Author Value="Aldo Marcio Soares"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <SearchPaths>
+        <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)"/>
+      </SearchPaths>
+    </CompilerOptions>
+    <Description Value="ChasePanelPackage - Simula um painel com retângulos ao seu redor, como se estivessem se movendo."/>
+    <License Value="Free"/>
+    <Version Major="1"/>
+    <Files>
+      <Item>
+        <Filename Value="chasepanel.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="ChasePanel"/>
+      </Item>
+    </Files>
+    <RequiredPkgs>
+      <Item>
+        <PackageName Value="LCL"/>
+      </Item>
+      <Item>
+        <PackageName Value="FCL"/>
+      </Item>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <DestinationDirectory Value="$(ProjPath)/../published"/>
+      <UseFileFilters Value="True"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>
