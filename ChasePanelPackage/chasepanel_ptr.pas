@@ -1,0 +1,496 @@
+unit ChasePanel;
+
+// Autor: Aldo Marcio Soares - ams2kg@gmail.com
+// Painel com elementos gráficos ao seu redor, em movimento como aqueles painéis de propaganda antigos.
+// Marquee Frames
+
+{$mode ObjFPC}{$H+}
+
+interface
+
+uses
+  Classes, SysUtils, LCLType, LCLIntf, Controls, Graphics, ExtCtrls,
+  Dialogs, LMessages, LResources, Math;
+
+type
+  TMoveDirection = (dirRight, dirDown, dirLeft, dirUp);
+
+  TMarqueePtr = record
+    Shape: TShape;
+    Direction: TMoveDirection; //Armazena a direção atual
+  end;
+
+  { TChasePanel }
+
+  TChasePanel = class(TPanel)
+  private
+    FRefreshPanel: Boolean;
+    TimerMarquee: TTimer;
+    TimerResize: TTimer;
+    MQList: TList; // Lista que armazenará os ponteiros para TMarqueePtr
+    FShape: TShapeType;
+
+    FActive, FUpdatingSize, FExecutando: Boolean;
+    FElementColor, FAlternateColor, FElementBorderColor: TColor;
+    FElementSize, FSpeed, F_MaxX, F_MaxY, FSpacing: Integer;
+    FWidth, FHeight: Integer;
+
+    procedure Marquee_Create;
+    procedure Marquee_Destroy;
+    procedure Marquee_NewObject(X, Y: Integer; Cor: TColor);
+    procedure SetActive(AValue: Boolean);
+    procedure SetAlternateColor(AValue: TColor);
+    procedure SetElementBorderColor(AValue: TColor);
+    procedure SetElementColor(AValue: TColor);
+    procedure SetElementSize(AValue: Integer);
+    procedure SetRefreshPanel(AValue: Boolean);
+    procedure SetShape(AValue: TShapeType);
+    procedure SetSpeed(AValue: Integer);
+    procedure TimerMarqueeTick(Sender: TObject);
+    procedure TimerResizeTick(Sender: TObject);
+    procedure RemoveObjetos;
+  protected
+    procedure Resize; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  published
+    property BevelOuter;
+    property BevelInner;
+    property BevelWidth;
+    property BorderStyle;
+    property BorderWidth;
+    property Height;
+    property Width;
+    property Active: Boolean read FActive write SetActive default False;
+    property ElementPrimaryColor: TColor read FElementColor write SetElementColor default clYellow;
+    property ElementSecondaryColor: TColor read FAlternateColor write SetAlternateColor default clWhite;
+    property ElementBorderColor: TColor read FElementBorderColor write SetElementBorderColor default clBlack;
+    property ElementSize: Integer read FElementSize write SetElementSize default 20;
+    property RefreshPanel: Boolean read FRefreshPanel write SetRefreshPanel;
+    property Shape: TShapeType read FShape write SetShape default stStar;
+    property Speed: Integer read FSpeed write SetSpeed default 5;
+    procedure Start;
+  end;
+
+procedure Register;
+
+implementation
+
+procedure Register;
+begin
+  {$I chasepanel_icon.lrs}
+  RegisterComponents('ModernUI',[TChasePanel]);
+end;
+
+constructor TChasePanel.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+
+  Randomize;
+
+  FExecutando := False;
+  FUpdatingSize := False;
+  Width  := 292;
+  Height := 172;
+  FWidth  := Width;
+  FHeight := Height;
+
+  BevelOuter  := bvNone;
+  BorderStyle := bsNone;
+
+  FActive := True;
+  FSpeed  := 5;
+  FElementSize := 20;
+  FSpacing := FElementSize + 10;
+  FElementColor   := clYellow;
+  FAlternateColor := clWhite;
+  FElementBorderColor := clBlack;
+  FShape := stStar;
+  F_MaxX := Width;
+  F_MaxY := Height;
+
+  TimerMarquee          := TTimer.Create(Self);
+  TimerMarquee.Enabled  := False;
+  TimerMarquee.Interval := 50;
+  TimerMarquee.OnTimer  := @TimerMarqueeTick;
+
+  TimerResize := TTimer.Create(Self);
+  TimerResize.Enabled  := True;
+  TimerResize.Interval := 2000;
+  TimerResize.OnTimer  := @TimerResizeTick;
+
+  Marquee_Create;
+end;
+
+destructor TChasePanel.Destroy;
+begin
+  if Assigned(TimerMarquee) then begin
+    TimerMarquee.Enabled := False;
+    TimerMarquee.Free;
+  end;
+
+  if Assigned(TimerResize) then begin
+    TimerResize.Enabled := False;
+    TimerResize.Free;
+  end;
+
+  Marquee_Destroy;
+
+  inherited Destroy;
+end;
+
+procedure TChasePanel.Start;
+begin
+  if not FExecutando then begin
+    RemoveObjetos;
+    FExecutando := True;
+    Marquee_Create;
+  end;
+end;
+
+procedure TChasePanel.Marquee_Create;
+//cria os objetos ao redor do TPanel
+var
+  ObjectPtr: ^TMarqueePtr;
+  i, X, Y, Width_Panel, Heigth_Panel: Integer;
+  lcolor: TColor;
+begin
+  if FUpdatingSize then Exit;
+
+  try
+    FUpdatingSize := True;
+
+    Marquee_Destroy; //elimina ponteiros anteriores
+
+    lcolor := FElementColor; //cor dos retângulos
+
+    MQList := TList.Create; //lista dos ponteiros para TMarqueePtr
+
+    //cálculo de limites
+    Width_Panel  := Width - FElementSize;
+    Heigth_Panel := Height - FElementSize;
+
+    i := 0;
+
+    //1. Borda Superior (move para a direita)
+    Y := 0;
+    X := FSpacing;
+
+    while X < Width_Panel do
+    begin
+      if i = 0 then lcolor := FElementColor else lcolor := FAlternateColor;
+      i := 1 - i;
+      F_MaxX := X; //guarda última posição .Left antes de estourar o .Width do Panel
+
+      Marquee_NewObject(X, Y, lcolor);
+
+      // A direção padrão é dirRight
+      X := X + FSpacing;
+    end;
+
+    // 2. Borda Direita (move para baixo)
+    X := F_MaxX;
+    Y := FSpacing;
+
+    while Y < Heigth_Panel do
+    begin
+      if i = 0 then lcolor := FElementColor else lcolor := FAlternateColor;
+      i := 1 - i;
+      F_MaxY := Y; //guarda última posição .Top antes de estourar o .Height do Panel
+
+      // 1. Cria e adiciona o objeto
+      Marquee_NewObject(X, Y, lcolor);
+
+      if FExecutando then begin
+        // 2. Obtém o ponteiro do objeto adicionado
+        ObjectPtr := MQList.Items[MQList.Count - 1];
+
+        // 3. Usa o ponteiro para desreferenciar (^) e definir a Direção
+        ObjectPtr^.Direction := dirDown;
+      end;
+
+      Y := Y + FSpacing;
+    end;
+
+    // 3. Borda Inferior (move para a esquerda)
+    Y := F_MaxY;
+    X := F_MaxX - FSpacing;
+
+    while X >= 0 do
+    begin
+      if i = 0 then lcolor := FElementColor else lcolor := FAlternateColor;
+      i := 1 - i;
+
+      Marquee_NewObject(X, Y, lcolor);
+
+      if FExecutando then begin
+         // Obtém o ponteiro do último objeto
+         ObjectPtr := MQList.Items[MQList.Count - 1];
+
+         // Define a Direção
+         ObjectPtr^.Direction := dirLeft;
+      end;
+
+      X := X - FSpacing;
+    end;
+
+    // 4. Borda Esquerda (move para cima)
+    X := 0;
+    Y := F_MaxY - FSpacing;
+
+    while Y >= 0 do
+    begin
+      if i = 0 then lcolor := FElementColor else lcolor := FAlternateColor;
+      i := 1 - i;
+
+      Marquee_NewObject(X, Y, lcolor);
+
+      if FExecutando then begin
+        // Obtém o ponteiro do último objeto
+        ObjectPtr := MQList.Items[MQList.Count - 1];
+
+        // Define a Direção
+        ObjectPtr^.Direction := dirUp;
+      end;
+
+      Y := Y - FSpacing;
+    end;
+
+    //ajusta dimensões do Panel
+    Height := F_MaxY + FElementSize + 2;
+    Width  := F_MaxX + FElementSize + 2;
+
+    if Assigned(TimerMarquee) then
+      TimerMarquee.Enabled := FActive;
+
+  except
+  end;
+
+  FUpdatingSize := False;
+end;
+
+procedure TChasePanel.Marquee_Destroy;
+// remove os objetos da memória
+var
+  i: Integer;
+  ObjectPtr: ^TMarqueePtr;
+begin
+  try
+    if FExecutando then begin
+      // Libera os recursos na ordem inversa de criação:
+      // 1. Libera a memória alocada dinamicamente para cada registro TMarqueePtr
+      for i := 0 to MQList.Count - 1 do
+      begin
+        ObjectPtr := MQList.Items[i];
+
+        // 2. Libera o componente visual TShape
+        ObjectPtr^.Shape.Free;
+
+        // 3. Libera o ponteiro do registro (New/Dispose)
+        Dispose(ObjectPtr);
+      end;
+
+      // 4. Libera a própria lista
+      MQList.Free;
+    end;
+  except
+  end;
+end;
+
+procedure TChasePanel.Marquee_NewObject(X, Y: Integer; Cor: TColor);
+// Rotina Auxiliar: Cria um TShape e a Estrutura de Dados ---
+var
+  NewObject: TMarqueePtr;
+  ShapeItem: TShape;
+  ObjectPtr: ^TMarqueePtr; // Ponteiro temporário
+begin
+  try
+    // 1. Cria o TShape (Objeto Visual)
+    ShapeItem             := TShape.Create(Self);
+    ShapeItem.Parent      := Self;
+    ShapeItem.Shape       := FShape; // stSquare, stStar;
+    ShapeItem.Width       := FElementSize;
+    ShapeItem.Height      := FElementSize;
+    ShapeItem.Brush.Color := Cor;
+
+    if FElementBorderColor = clNone then
+      ShapeItem.Pen.Color := Cor
+    else
+      ShapeItem.Pen.Color := FElementBorderColor;
+
+    ShapeItem.Left        := X;
+    ShapeItem.Top         := Y;
+    ShapeItem.Visible     := True;
+
+    if FExecutando then begin
+      // 2. Preenche o Registro de Dados
+      NewObject.Shape := ShapeItem;
+
+      // Direção inicial: Direita (pois começamos na borda superior)
+      NewObject.Direction := dirRight;
+
+      // 3. Aloca memória na heap e copia o registro (para evitar problemas de escopo)
+      // O TList só armazena ponteiros, então precisamos de memória persistente.
+      New(ObjectPtr);
+      ObjectPtr^ := NewObject;
+
+      // 4. Adiciona o PONTEIRO à lista
+      MQList.Add(ObjectPtr);
+    end;
+
+  except
+  end;
+end;
+
+procedure TChasePanel.SetActive(AValue: Boolean);
+begin
+  if FActive = AValue then Exit;
+  FActive := AValue;
+end;
+
+procedure TChasePanel.SetAlternateColor(AValue: TColor);
+begin
+  if FAlternateColor = AValue then Exit;
+  FAlternateColor := AValue;
+  RemoveObjetos;
+  Marquee_Create;
+end;
+
+procedure TChasePanel.SetElementBorderColor(AValue: TColor);
+begin
+  if FElementBorderColor = AValue then Exit;
+  FElementBorderColor := AValue;
+  RemoveObjetos;
+  Marquee_Create;
+end;
+
+procedure TChasePanel.SetElementColor(AValue: TColor);
+begin
+  if FElementColor = AValue then Exit;
+  FElementColor := AValue;
+  RemoveObjetos;
+  Marquee_Create;
+end;
+
+procedure TChasePanel.SetElementSize(AValue: Integer);
+begin
+  if FElementSize = AValue then Exit;
+  if AValue < 10 then AValue := 10;
+  if AValue > 50 then AValue := 50;
+  FElementSize := AValue;
+  FSpacing := FElementSize + FElementSize div 2;
+  RemoveObjetos;
+  Marquee_Create;
+end;
+
+procedure TChasePanel.SetRefreshPanel(AValue: Boolean);
+begin
+  if FRefreshPanel = AValue then Exit;
+  FRefreshPanel := AValue;
+  RemoveObjetos;
+  Marquee_Create;
+end;
+
+procedure TChasePanel.SetShape(AValue: TShapeType);
+begin
+  if FShape = AValue then Exit;
+  FShape := AValue;
+  RemoveObjetos;
+  Marquee_Create;
+end;
+
+procedure TChasePanel.SetSpeed(AValue: Integer);
+begin
+  if FSpeed = AValue then Exit;
+  FSpeed := AValue;
+end;
+
+procedure TChasePanel.TimerMarqueeTick(Sender: TObject);
+// animação dos objetos
+var
+  ObjectPtr: ^TMarqueePtr;
+  ShapeItem: TShape;
+  i: Integer;
+begin
+  try
+    if FActive and FExecutando and not FUpdatingSize then begin
+      // Itera sobre todos os objetos
+      for i := 0 to MQList.Count - 1 do
+      begin
+        // Obtém o ponteiro e o componente TShape
+        ObjectPtr := MQList.Items[i];
+        ShapeItem := ObjectPtr^.Shape;
+
+        // 1. Movimentação baseada na Direção Atual
+        case ObjectPtr^.Direction of
+          dirRight: ShapeItem.Left := ShapeItem.Left + FSpeed;
+          dirDown:  ShapeItem.Top  := ShapeItem.Top  + FSpeed;
+          dirLeft:  ShapeItem.Left := ShapeItem.Left - FSpeed;
+          dirUp:    ShapeItem.Top  := ShapeItem.Top  - FSpeed;
+        end;
+
+        // 2. Verificação de Canto (e Mudança de Direção)
+
+        // Canto Superior Direito -> Mudar para Baixo
+        if (ObjectPtr^.Direction = dirRight) and (ShapeItem.Left >= F_MaxX) then
+        begin
+          ShapeItem.Left := F_MaxX;
+          ObjectPtr^.Direction := dirDown;
+        end
+
+        // Canto Inferior Direito -> Mudar para Esquerda
+        else if (ObjectPtr^.Direction = dirDown) and (ShapeItem.Top >= F_MaxY) then
+        begin
+          ShapeItem.Top := F_MaxY;
+          ObjectPtr^.Direction := dirLeft;
+        end
+
+        // Canto Inferior Esquerdo -> Mudar para Cima
+        else if (ObjectPtr^.Direction = dirLeft) and (ShapeItem.Left <= 0) then
+        begin
+          ShapeItem.Left := 0;
+          ObjectPtr^.Direction := dirUp;
+        end
+
+        // Canto Superior Esquerdo -> Mudar para Direita
+        else if (ObjectPtr^.Direction = dirUp) and (ShapeItem.Top <= 0) then
+        begin
+          ShapeItem.Top := 0;
+          ObjectPtr^.Direction := dirRight;
+        end;
+      end;
+    end;
+  except
+  end;
+end;
+
+procedure TChasePanel.TimerResizeTick(Sender: TObject);
+begin
+  if not FExecutando and ((FWidth <> Width) or (FHeight <> Height)) then begin
+    FWidth  := Width;
+    FHeight := Height;
+    RemoveObjetos;
+    Marquee_Create;
+  end;
+end;
+
+procedure TChasePanel.RemoveObjetos;
+var
+  i: Integer;
+begin
+  for i:= Pred(ComponentCount) downto 0 do
+    if Components[i] is TShape then
+      Components[i].Free;
+
+  Refresh;
+end;
+
+procedure TChasePanel.Resize;
+begin
+  inherited Resize;
+  if Height < 172 then Height := 172;
+  if Width < 292 then Width := 292;
+end;
+
+end.
