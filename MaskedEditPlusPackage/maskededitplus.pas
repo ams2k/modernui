@@ -150,8 +150,12 @@ type
       function FormataData(AValue: string; ADateFmt: TMaskedEditDateFmt = edDMY): string;
       function FormataTelefone(AValue: string): string;
       function FormataTime(AValue: string): string;
-      function OnlyNumbers(const S: String): String;
+      { Retorna apenas os números contidos em Text }
+      function OnlyNumbers(const S: String = ''): String;
+      { Retorno o conteúdo de Text sem a formatação }
       function TextUnformatted: string;
+      { Retorna a parte inteira e positiva do Text }
+      function TextToInteger: Integer;
     published
       property Align;
       property Alignment: TAlignment read GetAlignment write SetAlignment;
@@ -518,6 +522,27 @@ begin
   end;
 end;
 
+function TMaskedEditPlus.TextToInteger: Integer;
+//retorna o conteúdo numérico de Text para Integer
+var
+  v: string;
+  i: integer;
+begin
+  Result := 0;
+
+  case FEditMode of
+    emCurrency:
+      begin
+        v := FloatToStr( CurrencyValue );
+        i := Pos(DecimalSeparator, v);
+        if i > 0 then v := LeftStr(v, i-1);
+        Result := StrToIntDef( OnlyNumbers(v), 0);
+      end;
+    else
+      Result := StrToIntDef( OnlyNumbers(), 0);
+  end;
+end;
+
 procedure TMaskedEditPlus.Paint;
 var
   R: TRect;
@@ -871,9 +896,13 @@ end;
 function TMaskedEditPlus.OnlyNumbers(const S: String): String;
 var
   c: Char;
+  v: string;
 begin
   Result := '';
-  for c in S do
+  v := S;
+  if (v = '') then v := FEdit.Text;
+
+  for c in v do
     if (c in ['0'..'9']) then Result := Result + c;
 end;
 
@@ -928,9 +957,9 @@ begin
 
   // Exemplo: 1.235,99 --> 1235.99
   num := RemoveFormatacaoCurrency(num);
-  num := ReplaceStr(num, ',', 'p');
-  num := ReplaceStr(num, '.', '');
-  num := ReplaceStr(num, 'p', '.');
+  num := ReplaceStr(num, DecimalSeparator, 'p'); //','
+  num := ReplaceStr(num, ThousandSeparator, ''); // '.'
+  num := ReplaceStr(num, 'p', '.'); //'.'
 
   // transforma em ponto número de flutuante
   Val(num, valor, erro);

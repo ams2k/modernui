@@ -1,7 +1,7 @@
 unit Util.JsonResult;
 
 {
- Autor: Aldo Márcio Soares - ams2kg@gmail.com - 28/04/2025 🔥
+ Autor: Aldo Márcio Soares - 28/04/2025 🔥
 
  Ferramenta para tornar o uso do json mais amigável, com chamadas encadeadas.
 
@@ -99,7 +99,61 @@ begin
   edtDados.Text := j.GetString(True);
   j.Free;
   ShowMessage('dados.json carregado!');
+
 }
+
+//5) -------------------------------------------
+//
+//var
+//  j: TJsonResult;
+//  s: string;
+//begin
+//  s :=
+//    '{' + sLineBreak +
+//    ' "nome": "Alberto",' + sLineBreak +
+//    ' "logradouro": "Rua Vinte e Dois, 101",' + sLineBreak +
+//    ' "idade": 18' + sLineBreak +
+//    '}';
+//
+//  j := TJsonResult.New.Parse( s );
+//  ShowMessage( j.GetObject.Get('nome', '') + sLineBreak + j.GetObject.Get('logradouro', '') )
+
+
+//6) -------------------------------------------
+//
+//var
+//  j: TJsonResult;
+//  p: TJSONObject;
+//begin
+//  s :=
+//    '[' + sLineBreak +
+//    ' {' + sLineBreak +
+//    '  "nome": "Jose",' + sLineBreak +
+//    '  "logradouro": "Rua Vinte, 58",' + sLineBreak +
+//    '  "idade": 28' + sLineBreak +
+//    ' },' + sLineBreak +
+//    ' {' + sLineBreak +
+//    '  "nome": "Mariana",' + sLineBreak +
+//    '  "logradouro": "Av Guaíra, 37",' + sLineBreak +
+//    '  "idade": 26' + sLineBreak +
+//    ' },' + sLineBreak +
+//    ' {' + sLineBreak +
+//    '  "nome": "Pedro",' + sLineBreak +
+//    '  "logradouro": "Rua João Luis, 100",' + sLineBreak +
+//    '  "idade": 35' + sLineBreak +
+//    ' },' + sLineBreak +
+//    ' {' + sLineBreak +
+//    '  "nome": "Carlos",' + sLineBreak +
+//    '  "logradouro": "Rua Sol Nascente, 301",' + sLineBreak +
+//    '  "idade": 34' + sLineBreak +
+//    ' }' + sLineBreak +
+//    ']';
+//
+//  j := TJsonResult.New.Parse( s );
+//  p := j.GetArray.Objects[ 2 ];
+//  ShowMessage(p.get('nome', '') + sLineBreak + p.Get('logradouro', ''));
+//  p.Free;
+
 
 {$mode delphi}{$H+}
 
@@ -121,20 +175,12 @@ type
 
   TJsonResult = class
   private
-    FCountArray: Integer;
-    FCountPairs: Integer;
-    FCountPairsArray: Integer;
     FJson: TJsonObject;
     FArray: TJSONArray;
-
   public
     constructor Create;
     destructor Destroy; override;
     class function New: TJsonResult; static;
-
-    property CountPairs: Integer read FCountPairs;
-    property CountPairsArray: Integer read FCountPairsArray;
-    property CountArray: Integer read FCountArray;
 
     function Success(AValue: Boolean): TJsonResult;
     function Message(AMsg: String): TJsonResult;
@@ -160,7 +206,9 @@ type
     function AddToArray(AJson: TJSONObject): TJsonResult;
     function GetArray: TJSONArray;
     function GetArrayString(AFormatted: Boolean = False): String;
-    function GetArrayFromField(AField: String): TJSONArray;
+
+    { Parse de um Json em formato string para JsonObject para acessar via .GetObject.Get('chave', '') }
+    function Parse(StrJSON: string): TJsonResult;
 
     function SaveToFile(const AFileName: String): Boolean;
     function LoadFromFile(const AFileName: String): Boolean;
@@ -176,8 +224,7 @@ implementation
 { TJSONFloat4Number }
 
 function TJSONFloat4Number.GetAsString: TJSONStringType;
-// regula o formato de exibição de valores com ponto flutuante,
-// sem mostrar valores em formato científico.
+// como usar:  SetJSONInstanceType(jitNumberFloat, TJSONFloat4Number);
 var
   F: TJSONFloat;
   fs: TFormatSettings;
@@ -187,7 +234,8 @@ begin
   fs := DefaultFormatSettings;
   fs.DecimalSeparator := '.';
 
-  Result := FormatFloat('0.00##########', F, fs);
+  //Result := FormatFloat('0.00###############', F, fs); // format with your preferences
+  Result := FormatFloat('0.00##########', F, fs); // format with your preferences
 end;
 
 { TJsonResult }
@@ -195,17 +243,21 @@ end;
 constructor TJsonResult.Create;
 begin
   SetJSONInstanceType(jitNumberFloat, TJSONFloat4Number);
-  FJson  := TJsonObject.Create;
+  FJson  := TJSONObject.Create;
   FArray := TJSONArray.Create;
-  FCountArray := 0;
-  FCountPairs := 0;
-  FCountPairsArray := 0;
 end;
 
 destructor TJsonResult.Destroy;
 begin
-  FArray.Free;
-  FJson.Free;
+  try
+    if Assigned(FJson) then
+      FJson.Free;
+
+    if Assigned(FArray) then
+      FArray.Free;
+  Except
+  end;
+
   inherited Destroy;
 end;
 
@@ -219,7 +271,6 @@ end;
 function TJsonResult.Success(AValue: Boolean): TJsonResult;
 begin
   FJson.Add('success', TJSONBoolean.Create(AValue));
-  FCountPairs := FCountPairs + 1;
   Result := Self;
 end;
 
@@ -227,7 +278,6 @@ end;
 function TJsonResult.Message(AMsg: String): TJsonResult;
 begin
   FJson.Add('message', TJSONString.Create(AMsg));
-  FCountPairs := FCountPairs + 1;
   Result := Self;
 end;
 
@@ -235,15 +285,13 @@ function TJsonResult.AddPair(const AKey, AValue: String): TJsonResult;
 //string
 begin
   FJson.Add(AKey, TJSONString.Create(AValue));
-  FCountPairs := FCountPairs + 1;
   Result := Self;
 end;
 
 function TJsonResult.AddPair(const AKey: String; AValue: Boolean): TJsonResult;
-//boolean
+//begin
 begin
   FJson.Add(AKey, TJSONBoolean.Create(AValue));
-  FCountPairs := FCountPairs + 1;
   Result := Self;
 end;
 
@@ -251,7 +299,6 @@ function TJsonResult.AddPair(const AKey: String; AValue: Integer): TJsonResult;
 //integer
 begin
   FJson.Add(AKey, TJSONIntegerNumber.Create(AValue));
-  FCountPairs := FCountPairs + 1;
   Result := Self;
 end;
 
@@ -259,35 +306,31 @@ function TJsonResult.AddPair(const AKey: String; AValue: Double): TJsonResult;
 //double
 begin
   FJson.Add(AKey, TJSONFloatNumber.Create(AValue));
-  FCountPairs := FCountPairs + 1;
   Result := Self;
 end;
 
 function TJsonResult.AddPairDate(const AKey: String; AValue: TDateTime): TJsonResult;
 begin
   FJson.Add(AKey, TJSONString.Create(FormatDateTime('yyyy-mm-dd', AValue)));
-  FCountPairs := FCountPairs + 1;
   Result := Self;
 end;
 
 function TJsonResult.AddPairDateTime(const AKey: String; AValue: TDateTime): TJsonResult;
 begin
   FJson.Add(AKey, TJSONString.Create(FormatDateTime('yyyy-mm-dd"T"hh:nn:ss', AValue)));
-  FCountPairs := FCountPairs + 1;
   Result := Self;
 end;
 
 function TJsonResult.AddPairTime(const AKey: String; AValue: TDateTime): TJsonResult;
 begin
   FJson.Add(AKey, TJSONString.Create(FormatDateTime('hh:nn:ss', AValue)));
-  FCountPairs := FCountPairs + 1;
   Result := Self;
 end;
 
-function TJsonResult.AddPairCurrency(const AKey: String; AValue: Double; const CurrencySymbol: String): TJsonResult;
+function TJsonResult.AddPairCurrency(const AKey: String;
+  AValue: Double; const CurrencySymbol: String): TJsonResult;
 begin
   FJson.Add(AKey, TJSONString.Create(CurrencySymbol + ' ' + FormatFloat('#,##0.00', AValue)));
-  FCountPairs := FCountPairs + 1;
   Result := Self;
 end;
 
@@ -302,7 +345,6 @@ begin
   if lDecimals < 0 then lDecimals := 0;
   sValor := Format('%0.' + IntToStr(lDecimals) +'f', [AValue]).Replace(',', '.');
   FJson.Add(AKey, TJSONString.Create(sValor));
-  FCountPairs := FCountPairs + 1;
   Result := Self;
 end;
 
@@ -310,7 +352,6 @@ function TJsonResult.AddPairNull(const AKey: String): TJsonResult;
 // um valor NULL
 begin
   FJson.Add(AKey, TJSONNull.Create);
-  FCountPairs := FCountPairs + 1;
   Result := Self;
 end;
 
@@ -318,7 +359,6 @@ function TJsonResult.AddPairObject(const AKey: String; AObject: TJsonResult): TJ
 //adiciona um objeto (JSonResult)
 begin
   FJson.Add(AKey, AObject.FJson.Clone as TJSONData); // Clona para manter dono
-  FCountPairs := FCountPairs + 1;
   Result := Self;
 end;
 
@@ -334,7 +374,6 @@ begin
     arr.Add(TJSONString.Create(AValues[i]));
 
   FJson.Add(AKey, arr);
-  FCountPairsArray := FCountPairsArray + 1;
   Result := Self;
 end;
 
@@ -350,7 +389,6 @@ begin
     arr.Add(TJSONIntegerNumber.Create(AValues[i]));
 
   Fjson.Add(AKey, arr);
-  FCountPairsArray := FCountPairsArray + 1;
   Result := Self;
 end;
 
@@ -366,7 +404,6 @@ begin
     arr.Add(TJSONFloatNumber.Create(AValues[i]));
 
   FJson.Add(AKey, arr);
-  FCountPairsArray := FCountPairsArray + 1;
   Result := Self;
 end;
 
@@ -374,7 +411,6 @@ function TJsonResult.AddPairArray(const AKey: String; AJsonArray: TJSONArray): T
 // adiciona um objeto jsonarray
 begin
   FJson.Add(AKey, AJsonArray);
-  FCountPairsArray := FCountPairsArray + 1;
   Result := Self;
 end;
 
@@ -401,14 +437,28 @@ begin
   if Assigned(dados) then dados.Free;
 end;
 
-function TJsonResult.GetArrayFromField(AField: String): TJSONArray;
-//retorna um array do campo array indicado
+function TJsonResult.Parse(StrJSON: string): TJsonResult;
+//transforma uma StringJson em ObjectJson para acessar via .GetObject.Get('chave', '')
+var
+  dados: TJSONData;
 begin
-  Result := TJSONArray.Create;
+  StrJSON := Trim(StrJSON);
+
+  FJson   := TJSONObject.Create;
+  FArray  := TJSONArray.Create;
+
   try
-    Result := FJson.Arrays[AField];
-  finally
+    dados := GetJSON( StrJSON );
+
+    if LeftStr(StrJSON, 1) = '[' then
+      FArray := TJSONArray( dados )
+    else if LeftStr(StrJSON, 1) = '{' then
+      FJson := TJSONObject( dados );
+  except
+
   end;
+
+  Result := Self;
 end;
 
 function TJsonResult.GetArray: TJSONArray;
@@ -563,7 +613,6 @@ begin
   Result := dados.FormatJSON();
   if Assigned(dados) then dados.Free;
 end;
-
 
 end.
 
