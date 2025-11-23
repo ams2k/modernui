@@ -155,7 +155,7 @@ type
       { Retorno o conteúdo de Text sem a formatação }
       function TextUnformatted: string;
       { Retorna a parte inteira e positiva do Text }
-      function TextToInteger: Integer;
+      function TextToInteger: Int64;
     published
       property Align;
       property Alignment: TAlignment read GetAlignment write SetAlignment;
@@ -187,7 +187,7 @@ type
       property OnMouseLeave: TNotifyEvent read FOnMouseLeave write FOnMouseLeave;
 
       property BorderColor: TColor read FBorderColor write SetBorderColor default clGray;
-      property BorderRadius: Integer read FBorderRadius write SetBorderRadius default 0;
+      property BorderRadius: Integer read FBorderRadius write SetBorderRadius default 4;
       property BorderStyle: TPenStyle read FBorderStyle write SetBorderStyle default psSolid;
       property BorderWidth: Integer read FBorderWidth write SetBorderWidth default 1;
       property BorderBottom: Boolean read FBorderBottom write SetBorderBottom default false;
@@ -231,7 +231,7 @@ begin
   Visible := True;
 
   FBorderColor := $00BCBEBF;
-  FBorderRadius := 0;
+  FBorderRadius := 4;
   FBorderStyle := psSolid;
   FBorderWidth := 1;
   FBorderBottom:= false;
@@ -522,7 +522,7 @@ begin
   end;
 end;
 
-function TMaskedEditPlus.TextToInteger: Integer;
+function TMaskedEditPlus.TextToInteger: Int64;
 //retorna o conteúdo numérico de Text para Integer
 var
   v: string;
@@ -534,12 +534,12 @@ begin
     emCurrency:
       begin
         v := FloatToStr( CurrencyValue );
-        i := Pos(DecimalSeparator, v);
+        i := Pos(DefaultFormatSettings.DecimalSeparator, v);
         if i > 0 then v := LeftStr(v, i-1);
-        Result := StrToIntDef( OnlyNumbers(v), 0);
+        Result := StrToInt64Def( OnlyNumbers(v), 0);
       end;
     else
-      Result := StrToIntDef( OnlyNumbers(), 0);
+      Result := StrToInt64Def( OnlyNumbers(), 0);
   end;
 end;
 
@@ -936,7 +936,7 @@ begin
   vlr := RemoveFormatacaoCurrency(vlr);
 
   If (not bFormatoREAL) or (FCurrDecimals < 1) Then //'Não coloca "." separando as milhares
-     vlr := ReplaceStr(vlr, ThousandSeparator, ''); //TFormatSettings
+     vlr := ReplaceStr(vlr, DefaultFormatSettings.ThousandSeparator, ''); //TFormatSettings
 
   Result := vlr;
 end;
@@ -957,8 +957,8 @@ begin
 
   // Exemplo: 1.235,99 --> 1235.99
   num := RemoveFormatacaoCurrency(num);
-  num := ReplaceStr(num, DecimalSeparator, 'p'); //','
-  num := ReplaceStr(num, ThousandSeparator, ''); // '.'
+  num := ReplaceStr(num, DefaultFormatSettings.DecimalSeparator, 'p'); //','
+  num := ReplaceStr(num, DefaultFormatSettings.ThousandSeparator, ''); // '.'
   num := ReplaceStr(num, 'p', '.'); //'.'
 
   // transforma em ponto número de flutuante

@@ -103,7 +103,7 @@ begin
 }
 
 //5) -------------------------------------------
-//
+//uses fpjson;
 //var
 //  j: TJsonResult;
 //  s: string;
@@ -120,22 +120,37 @@ begin
 
 
 //6) -------------------------------------------
-//
+//uses fpjson;
 //var
 //  j: TJsonResult;
 //  p: TJSONObject;
+//  a: TJSONArray;
+//  s: string;
 //begin
 //  s :=
 //    '[' + sLineBreak +
 //    ' {' + sLineBreak +
 //    '  "nome": "Jose",' + sLineBreak +
 //    '  "logradouro": "Rua Vinte, 58",' + sLineBreak +
-//    '  "idade": 28' + sLineBreak +
+//    '  "idade": 28,' + sLineBreak +
+//    '  "cursos": [' + sLineBreak +
+//    '    {' + sLineBreak +
+//    '      "id": 1,' + sLineBreak +
+//    '      "curso": "Engenharia Elétrica",' + sLineBreak +
+//    '      "data": "1992-01-12"' + sLineBreak +
+//    '    },' + sLineBreak +
+//    '    {' + sLineBreak +
+//    '      "id": 2,' + sLineBreak +
+//    '      "curso": "Programação Pascal",' + sLineBreak +
+//    '      "data": "2005-08-28"' + sLineBreak +
+//    '    }' + sLineBreak +
+//    '  ]' + sLineBreak +
 //    ' },' + sLineBreak +
 //    ' {' + sLineBreak +
 //    '  "nome": "Mariana",' + sLineBreak +
 //    '  "logradouro": "Av Guaíra, 37",' + sLineBreak +
-//    '  "idade": 26' + sLineBreak +
+//    '  "idade": 26,' + sLineBreak +
+//    '  "cursos": [ ]' + sLineBreak +
 //    ' },' + sLineBreak +
 //    ' {' + sLineBreak +
 //    '  "nome": "Pedro",' + sLineBreak +
@@ -149,9 +164,26 @@ begin
 //    ' }' + sLineBreak +
 //    ']';
 //
-//  j := TJsonResult.New.Parse( s );
-//  p := j.GetArray.Objects[ 2 ];
-//  ShowMessage(p.get('nome', '') + sLineBreak + p.Get('logradouro', ''));
+//  j := TJsonResult.New.Parse( s ); //não use j.Free pois a classe cuidará disso
+//  p := j.GetArray.Objects[ 0 ];
+//  s := p.get('nome', '') + sLineBreak + p.Get('logradouro', '');
+//  try
+//    if (p.IndexOfName('cursos', true) > 0) then begin
+//      a := p.Arrays['cursos'];
+//
+//      s := s + sLineBreak + '[ cursos ]';
+//
+//      if a.Count > 0 then
+//        for op := 0 to a.Count -1 do
+//         s := s + sLineBreak + '  ' + (TJSONObject( a.Objects[op] )).Get('data', '') + ' - ' + (TJSONObject( a.Objects[op] )).Get('curso', '')
+//      else
+//        s := s + sLineBreak + '  Nenhum';
+//
+//      //a.Free; //não use! (p.free  cuidará disso)
+//    end;
+//  except
+//  end;
+//  ShowMessage( s );
 //  p.Free;
 
 
