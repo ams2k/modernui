@@ -19,7 +19,8 @@ type
 
     TButtonRetro = class(TCustomControl)
     private
-      FDown: Boolean;
+      FCaptionAlignment: TAlignment;
+      FMouseDown: Boolean;
       FHoverColor: TColor;
       FHover: Boolean;
       FMouseOver: Boolean;
@@ -28,6 +29,7 @@ type
       FImageList: TImageList;
       FImageIndex: Integer;
       FImagePosition: TImagePosition;
+      procedure SetCaptionAlignment(AValue: TAlignment);
       procedure SetHoverColor(AValue: TColor);
       procedure SetImageList(AValue: TImageList);
       procedure SetImageIndex(AValue: Integer);
@@ -49,6 +51,7 @@ type
       property Align;
       property Anchors;
       property Caption;
+      property CaptionAlignment: TAlignment read FCaptionAlignment write SetCaptionAlignment;
       property Color;
       property Enabled;
       property Font;
@@ -92,12 +95,14 @@ begin
   ControlStyle := [csCaptureMouse, csClickEvents, csSetCaption, csDoubleClicks];
   Width := 80;
   Height := 28;
+  FFlatStyle := False;
   FHover := False;
   FHoverColor := clSkyBlue;
   TabStop := True;
   FImageIndex := -1;
   FImagePosition := ipLeft;
   Color := clBtnFace;
+  FCaptionAlignment := taCenter;
 end;
 
 procedure TButtonRetro.SetImageList(AValue: TImageList);
@@ -110,6 +115,13 @@ procedure TButtonRetro.SetHoverColor(AValue: TColor);
 begin
   if FHoverColor = AValue then Exit;
   FHoverColor := AValue;
+  Invalidate;
+end;
+
+procedure TButtonRetro.SetCaptionAlignment(AValue: TAlignment);
+begin
+  if FCaptionAlignment = AValue then Exit;
+  FCaptionAlignment := AValue;
   Invalidate;
 end;
 
@@ -140,128 +152,6 @@ begin
   end;
 end;
 
-procedure TButtonRetro.Paint;
-var
-  R: TRect;
-  Offset: Integer = 0;
-  TextRect: TRect;
-  ImgW, ImgH, ImgX, ImgY, TxtX, TxtY: Integer;
-  FaceColor: TColor;
-begin
-  R := ClientRect;
-
-  if FHover then
-    FaceColor := FHoverColor
-  else
-    FaceColor := Color;
-
-  //fundo
-  Canvas.Brush.Color := FaceColor;
-  Canvas.FillRect(R);
-
-  R.Top := R.Top + 1;
-  R.Left := R.Left + 1;
-  R.Right := R.Right - 1;
-  R.Bottom := R.Bottom - 1;
-
-  if not FFlatStyle then
-  begin
-    if FDown then
-      //DrawEdge(Canvas.Handle, R, EDGE_SUNKEN, BF_RECT)
-      Frame3d(Canvas.Handle, R, 3, bvLowered)
-    else
-      //DrawEdge(Canvas.Handle, R, EDGE_RAISED, BF_RECT);
-      Frame3d(Canvas.Handle, R, 3, bvRaised);
-  end;
-
-  InflateRect(R, -4, -4);
-
-  if FDown then Offset := 1;
-
-  Canvas.Font := Font;
-  TextRect := R;
-
-  ImgW := 0;
-  ImgH := 0;
-  if Assigned(FImageList) and (FImageIndex >= 0) then
-  begin
-    ImgW := FImageList.Width;
-    ImgH := FImageList.Height;
-  end;
-
-  TxtX := R.Left + Offset;
-  TxtY := R.Top + Offset;
-
-  case FImagePosition of
-    ipLeft:
-      begin
-        ImgX := R.Left + Offset;
-        ImgY := R.Top + (R.Height - ImgH) div 2 + Offset;
-        TxtX := ImgX + ImgW + 4;
-        TxtY := R.Top + (R.Height - Canvas.TextHeight(Caption)) div 2 + Offset;
-      end;
-    ipRight:
-      begin
-        TxtX := R.Left + Offset;
-        TxtY := R.Top + (R.Height - Canvas.TextHeight(Caption)) div 2 + Offset;
-        ImgX := R.Right - ImgW - 4 + Offset;
-        ImgY := R.Top + (R.Height - ImgH) div 2 + Offset;
-      end;
-    ipTop:
-      begin
-        ImgX := R.Left + (R.Width - ImgW) div 2 + Offset;
-        ImgY := R.Top + Offset;
-        TxtX := R.Left + (R.Width - Canvas.TextWidth(Caption)) div 2 + Offset;
-        TxtY := ImgY + ImgH + 4;
-      end;
-    ipBottom:
-      begin
-        TxtX := R.Left + (R.Width - Canvas.TextWidth(Caption)) div 2 + Offset;
-        TxtY := R.Top + Offset;
-        ImgX := R.Left + (R.Width - ImgW) div 2 + Offset;
-        ImgY := TxtY + Canvas.TextHeight(Caption) + 4;
-      end;
-    ipCenter:
-      begin
-        if ImgW > 0 then
-        begin
-          ImgX := R.Left + (R.Width - ImgW) div 2 + Offset;
-          ImgY := R.Top + (R.Height - ImgH) div 2 + Offset;
-        end;
-        TxtX := R.Left + (R.Width - Canvas.TextWidth(Caption)) div 2 + Offset;
-        TxtY := R.Top + (R.Height - Canvas.TextHeight(Caption)) div 2 + Offset;
-      end;
-  end;
-
-  if (FImageList <> nil) and (FImageIndex >= 0) then
-    FImageList.Draw(Canvas, ImgX, ImgY, FImageIndex, Enabled);
-
-  //borda
-  Canvas.Brush.Style := bsClear;
-  Canvas.Pen.Width := 1;
-  Canvas.Pen.Style := psSolid;
-  Canvas.Pen.Color := clBlack;
-  Canvas.Rectangle(ClientRect);
-
-  Canvas.TextOut(TxtX, TxtY, Caption);
-
-  //focus?
-  if FFocused and Enabled then begin
-    R := ClientRect;
-    R.Top := R.Top + 5;
-    R.Left := R.Left + 5;
-    R.Right := R.Right - 5;
-    R.Bottom := R.Bottom - 5;
-
-    Canvas.Pen.Style := psDot;
-    Canvas.Pen.Color := clGray;
-    Canvas.Rectangle(R);
-  end;
-
-  //if FFocused then
-    //DrawFocusRect(Canvas.Handle, R);
-end;
-
 procedure TButtonRetro.MouseEnter;
 begin
   inherited MouseEnter;
@@ -280,7 +170,7 @@ procedure TButtonRetro.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y:
 begin
   inherited MouseDown(Button, Shift, X, Y);
   if Button = mbLeft then begin
-    FDown := True;
+    FMouseDown := True;
     Invalidate;
   end;
 end;
@@ -289,7 +179,7 @@ procedure TButtonRetro.MouseUp(Button: TMouseButton; Shift: TShiftState; X, Y: I
 begin
   inherited MouseUp(Button, Shift, X, Y);
   if Button = mbLeft then begin
-    FDown := False;
+    FMouseDown := False;
     Invalidate;
     Click;
   end;
@@ -314,7 +204,7 @@ begin
   inherited KeyDown(Key, Shift);
   if (Key = VK_SPACE) or (Key = VK_RETURN) then
   begin
-    FDown := True;
+    FMouseDown := True;
     Invalidate;
   end;
 end;
@@ -324,10 +214,149 @@ begin
   inherited KeyUp(Key, Shift);
   if (Key = VK_SPACE) or (Key = VK_RETURN) then
   begin
-    FDown := False;
+    FMouseDown := False;
     Invalidate;
     Click;
   end;
+end;
+
+procedure DrawCaptionText(ACanvas: TCanvas; ARect: TRect; const AText: string;
+                          Alignment: TAlignment; AVertCenter: Boolean = True);
+var
+  Flags: Cardinal;
+begin
+  Flags := DT_SINGLELINE or DT_NOPREFIX;
+
+  case Alignment of
+    taLeftJustify:  Flags := Flags or DT_LEFT;
+    taRightJustify: Flags := Flags or DT_RIGHT;
+    taCenter:       Flags := Flags or DT_CENTER;
+  end;
+
+  if AVertCenter then
+    Flags := Flags or DT_VCENTER;
+
+  DrawText(ACanvas.Handle, PChar(AText), -1, ARect, Flags);
+end;
+
+procedure TButtonRetro.Paint;
+var
+  R: TRect;
+  Offset: Integer;
+  ImgW, ImgH, ImgX, ImgY, dx, dy: Integer;
+  FaceColor: TColor;
+begin
+  R  := ClientRect;
+  Offset := 0;
+  dx := 4;
+  dy := 4;
+
+  if FHover then
+    FaceColor := FHoverColor
+  else
+    FaceColor := Color;
+
+  //fundo
+  Canvas.Brush.Color := FaceColor;
+  Canvas.FillRect(R);
+
+  R.Top    := R.Top + 1;
+  R.Left   := R.Left + 1;
+  R.Right  := R.Right - 1;
+  R.Bottom := R.Bottom - 1;
+
+  if not FFlatStyle then
+  begin
+    if FMouseDown then
+      //DrawEdge(Canvas.Handle, R, EDGE_SUNKEN, BF_RECT)
+      Frame3d(Canvas.Handle, R, 3, bvLowered)
+    else
+      //DrawEdge(Canvas.Handle, R, EDGE_RAISED, BF_RECT);
+      Frame3d(Canvas.Handle, R, 3, bvRaised);
+  end;
+
+  InflateRect(R, -dx, -dy);
+
+  if FMouseDown then Offset := 1;
+
+  if FFlatStyle then
+  begin
+    dx := 0;
+    dy := 0;
+  end;
+
+  Canvas.Font := Font;
+
+  //posicionamento do ícone
+  if Assigned(FImageList) and (FImageIndex >= 0) then
+  begin
+    ImgW := FImageList.Width;
+    ImgH := FImageList.Height;
+
+    case FImagePosition of
+      ipLeft: //centralizado a esquerda do botão
+        begin
+          ImgX := R.Left + Offset;
+          ImgY := R.Top + (R.Height - ImgH) div 2 + Offset;
+          R.Left := R.Left + ImgW + dx + Offset;
+        end;
+      ipRight: //centralizado a direita do botão
+        begin
+          ImgX := R.Right - ImgW - Offset;
+          ImgY := R.Top + (R.Height - ImgH) div 2 + Offset;
+          R.Right := R.Right - ImgW - dx + Offset;
+        end;
+      ipTop: //centralizado no topo do botão
+        begin
+          ImgX := R.Left + (R.Width - ImgW) div 2 + Offset;
+          ImgY := R.Top + Offset;
+          R.Top := R.Top + ImgH + dy + Offset;
+          FCaptionAlignment := taCenter;
+        end;
+      ipBottom: //centralizado na base do botão
+        begin
+          ImgX := R.Left + (R.Width - ImgW) div 2 + Offset;
+          ImgY := R.Bottom - (ImgH + Offset);
+          R.Bottom := R.Bottom - (ImgH + Offset);
+          FCaptionAlignment := taCenter;
+        end;
+      ipCenter: //no centro do botão
+        begin
+          ImgX := R.Left + (R.Width - ImgW) div 2 + Offset;
+          ImgY := R.Top + (R.Height - ImgH) div 2 + Offset;
+          FCaptionAlignment := taCenter;
+        end;
+    end; //case
+
+    FImageList.Draw(Canvas, ImgX, ImgY, FImageIndex, Enabled)
+  end; //if
+
+  //borda
+  Canvas.Brush.Style := bsClear;
+  Canvas.Pen.Width := 1;
+  Canvas.Pen.Style := psSolid;
+  Canvas.Pen.Color := clBlack;
+  Canvas.Rectangle(ClientRect);
+
+  //Canvas.TextOut(TxtX, TxtY, Caption);
+  DrawCaptionText(Canvas, R, Caption, FCaptionAlignment);
+
+  //focus?
+  if (FFocused and Enabled) then
+  begin
+    R := ClientRect;
+    R.Top := R.Top + dy + 1;
+    R.Left := R.Left + dx + 1;
+    R.Right := R.Right - dx - 1;
+    R.Bottom := R.Bottom - dy - 1;
+
+    Canvas.Pen.Style := psDot;
+    Canvas.Pen.Color := clGray;
+    Canvas.Rectangle(R);
+  end;
+
+  //if FFocused then
+    //DrawFocusRect(Canvas.Handle, R);
 end;
 
 end.

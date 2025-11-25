@@ -95,21 +95,21 @@ end;
 
 function TUtilCep.GetCEP(ACEP: Integer): Boolean;
 var
-  res: string;
+  lres: string;
   lobj: TJSONData;
   lJson: TJSONObject;
 begin
   Result := False;
-  res    := ApiCEP( ACEP );
+  lres    := ApiCEP( ACEP );
 
   if FErro <> '' then Exit;
 
-  if Length(res) > 0 then begin
+  if Length(lres) > 0 then begin
      FErro  := '';
 
      try
        try
-         lobj  := GetJSON( res ); //será liberado da memória em lJson.Free
+         lobj  := GetJSON( lres ); //será liberado da memória em lJson.Free
          lJson := TJSONObject( lobj );
 
          FLogradouro  := lJson.Get('logradouro', '');
@@ -134,7 +134,7 @@ begin
            FErro  := E.Message;
        end;
      finally
-       res := '';
+       lres := '';
        lJson.Free;
      end;
   end;
