@@ -67,13 +67,15 @@ begin
   Result := '';
   FErro  := '';
 
-  if ACEP < 1 then Exit;
+  if (ACEP < 1) or (ACEP > 99999999) then begin
+    FErro := 'Cep inválido';
+    Exit;
+  end;
 
   httpClient := TFPHTTPClient.Create(nil);
 
   try
     try
-      // Definir o protocolo SSL
       // Adicionar cabeçalho user-agent para evitar bloqueio de requisições
       httpClient.AddHeader('User-Agent', 'Mozilla/5.0');
       Result := httpClient.Get('https://viacep.com.br/ws/'+ RightStr('00000000' + IntToStr(ACEP), 8) + '/json');
@@ -98,7 +100,6 @@ var
   lJson: TJSONObject;
 begin
   Result := False;
-  FErro  := '';
   res    := ApiCEP( ACEP );
 
   if FErro <> '' then Exit;
@@ -108,7 +109,7 @@ begin
 
      try
        try
-         lobj := GetJSON( res ); //será liberado da memória em lJson.Free
+         lobj  := GetJSON( res ); //será liberado da memória em lJson.Free
          lJson := TJSONObject( lobj );
 
          FLogradouro  := lJson.Get('logradouro', '');
@@ -124,7 +125,10 @@ begin
          FDDD         := lJson.Get('ddd', '');
          FSIAFI       := lJson.Get('siafi', '');
 
-         Result       := True;
+         Result       := (FLogradouro <> '');
+
+         if not Result then
+           FErro := 'Cep não encontrado';
        except
          on E: Exception do
            FErro  := E.Message;

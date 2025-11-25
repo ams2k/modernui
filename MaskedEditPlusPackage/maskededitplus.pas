@@ -224,7 +224,7 @@ begin
   inherited Create(AOwner);
 
   Width := 150;
-  Height := 22;
+  Height := 27;
   DoubleBuffered := True;
   ControlStyle := ControlStyle + [csAcceptsControls, csSetCaption];
   TabStop := True;
@@ -1539,7 +1539,13 @@ end;
 
 procedure TMaskedEditPlus.EditKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
-  if FReadOnly then Key := 0;
+  if (Key = VK_TAB) and (ssShift in Shift) then //Shift Tab
+  begin
+    Key := 0;
+    Parent.SelectNext(Self, False, True); //ir para o controle anterior no parent
+    Exit;
+  end;
+
   FTemFoco := True;
 
   case FEditMode of
