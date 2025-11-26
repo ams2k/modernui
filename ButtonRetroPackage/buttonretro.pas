@@ -101,7 +101,7 @@ begin
   TabStop := True;
   FImageIndex := -1;
   FImagePosition := ipLeft;
-  Color := clBtnFace;
+  Color := $00D6D6D6; //clBtnFace; //$00B9B9B9 (VB6) //$00D6D6D6 (um pouco mais claro)
   FCaptionAlignment := taCenter;
 end;
 
@@ -298,44 +298,58 @@ begin
         begin
           ImgX := R.Left + Offset;
           ImgY := R.Top + (R.Height - ImgH) div 2 + Offset;
-          R.Left := R.Left + ImgW + dx + Offset;
+          R.Left := R.Left + ImgW + Offset * 2;
+          R.Top  := R.Top + Offset * 2;
         end;
       ipRight: //centralizado a direita do botão
         begin
           ImgX := R.Right - ImgW - Offset;
           ImgY := R.Top + (R.Height - ImgH) div 2 + Offset;
-          R.Right := R.Right - ImgW - dx + Offset;
+          R.Right := R.Right - ImgW - Offset * 2;
+          R.Top   := R.Top + Offset * 2;
         end;
-      ipTop: //centralizado no topo do botão
+      ipTop: //centralizado no topo do botão (ok)
         begin
-          ImgX := R.Left + (R.Width - ImgW) div 2 + Offset;
+          ImgX := R.Left + (R.Width - ImgW) div 2;
           ImgY := R.Top + Offset;
           R.Top := R.Top + ImgH + dy + Offset;
           FCaptionAlignment := taCenter;
         end;
-      ipBottom: //centralizado na base do botão
+      ipBottom: //centralizado na base do botão (ok)
         begin
-          ImgX := R.Left + (R.Width - ImgW) div 2 + Offset;
-          ImgY := R.Bottom - (ImgH + Offset);
-          R.Bottom := R.Bottom - (ImgH + Offset);
+          ImgX := R.Left + (R.Width - ImgW) div 2;
+          ImgY := R.Bottom - ImgH + Offset;
+          R.Bottom := R.Bottom - ImgH + Offset;
+          R.Top := R.Top + Offset;
           FCaptionAlignment := taCenter;
         end;
       ipCenter: //no centro do botão
         begin
           ImgX := R.Left + (R.Width - ImgW) div 2 + Offset;
           ImgY := R.Top + (R.Height - ImgH) div 2 + Offset;
+          R.Top := R.Top + Offset * 2;
+          R.Left := R.Left + Offset;
           FCaptionAlignment := taCenter;
         end;
     end; //case
 
     FImageList.Draw(Canvas, ImgX, ImgY, FImageIndex, Enabled)
+  end
+  else begin
+    R.Top  := R.Top  + Offset * 2;
+    R.Left := R.Left + Offset;
   end; //if
 
   //borda
   Canvas.Brush.Style := bsClear;
   Canvas.Pen.Width := 1;
   Canvas.Pen.Style := psSolid;
-  Canvas.Pen.Color := clBlack;
+
+  if FFocused then
+    Canvas.Pen.Color := clBlack
+  else
+    Canvas.Pen.Color := $00707070;
+
   Canvas.Rectangle(ClientRect);
 
   //Canvas.TextOut(TxtX, TxtY, Caption);
