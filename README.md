@@ -11,6 +11,7 @@ Components Packages for Lazarus / FreePascal
 - CircularProgressBarPackage: Progresso circular.
 - DBGridPlusPackage: DBGrid com visual moderno, bordas, gradiente.
 - EditExtPackage: Edit padrão do Topazzio.
+- EditPlusPackage: Edit com Imagem.
 - LabelPlusPackage: Label com ícone, bordas e gradiente.
 - MaskedEditPlusPackage: Edit com máscaras (cpf, cnpj, telefone, cep, data) e valores monetários.
 - PanelPlusPackage: Painel diferentes tipos de bordas e gradiente.

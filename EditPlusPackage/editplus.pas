@@ -95,6 +95,7 @@ type
     procedure SetIconWidth(AValue: Integer);
     procedure SetIsCurrency(AValue: Boolean);
     procedure SetMaxLength(AValue: Integer);
+    procedure SetNumbersOnly(AValue: Boolean);
     procedure SetNumericValue(AValue: Double);
 
     procedure SetPlaceholder(const AValue: string);
@@ -118,6 +119,7 @@ type
     function GetEditText: string;
     procedure SetEditText(const AValue: string);
     procedure AjustaShowPassword;
+    procedure Configurar;
   protected
     procedure Paint; override;
     procedure Resize; override;
@@ -144,7 +146,7 @@ type
     destructor Destroy; override;
     procedure Clear;
     { Retorna apenas os números contidos em Text }
-    function OnlyNumbers(const S: String = ''): String;
+    function GetNumbersOnly(const S: String = ''): String;
     { Retorna a parte inteira e positiva do Text }
     function TextToInteger: Int64;
   published
@@ -182,7 +184,7 @@ type
     property CurrentDecimals: Integer read GetDecimalPlaces write SetDecimalPlaces default 2;
     property CurrencySymbol: String read GetCurSymbol write SetCurSymbol;
     property Placeholder: string read FPlaceholder write SetPlaceholder;
-    property NumbersOnly: Boolean read FNumbersOnly write FNumbersOnly default false;
+    property NumbersOnly: Boolean read FNumbersOnly write SetNumbersOnly default false;
     property DefaultColor: TColor read GetEditDefaultColor write SetEditDefaultColor default clDefault;
     property FocusedColor: TColor read FFocusColorText write SetFocusedColor default clGray;
 
@@ -236,6 +238,7 @@ begin
   FHintTemp := '';
   FFocusColorText := clBlue;
   FEditDefaultColor := clDefault; //clBtnFace;
+  FNumbersOnly := False;
 
   FDefaultIconWidth := 27;
   FIconWidth := FDefaultIconWidth;
@@ -261,8 +264,8 @@ begin
   FImage.BorderSpacing.Left := 1;
   FImage.BorderSpacing.Top := 1;
   FImage.BorderSpacing.Right := 0;
-  FImage.BorderSpacing.Bottom := 1;
-  FImage.BorderSpacing.Around := 1;
+  FImage.BorderSpacing.Bottom := 0;
+  FImage.BorderSpacing.Around := 0;
   FImage.Center := True;
   FImage.Stretch := FIconStretch;
   FImage.Visible := FIconVisible;
@@ -295,6 +298,7 @@ begin
   FEdit.AutoSelect := False;
   FEdit.AutoSize := False;
   FEDIT.Height := Height;
+  FEdit.NumbersOnly := FNumbersOnly;
   FEdit.OnClick := @EditClick;
   FEdit.OnEnter := @EditEnter;
   FEdit.OnExit := @EditExit;
@@ -352,12 +356,17 @@ end;
 procedure TEditPlus.Clear;
 begin
   FText := '';
-  FEdit.Text := '';
+
+  if FEdit.NumbersOnly then
+    FEdit.Text := '0'
+  else
+    FEdit.Clear;
+
   FNumericValue := 0;
   Invalidate;
 end;
 
-function TEditPlus.OnlyNumbers(const S: String): String;
+function TEditPlus.GetNumbersOnly(const S: String): String;
 //retorna apenas números
 var
   c: Char;
@@ -384,10 +393,10 @@ begin
     v := FloatToStr( CurrencyValue );
     i := Pos(DefaultFormatSettings.DecimalSeparator, v);
     if i > 0 then v := LeftStr(v, i-1);
-    Result := StrToInt64Def( OnlyNumbers(v), 0);
+    Result := StrToInt64Def( GetNumbersOnly(v), 0);
   end
   else
-    Result := StrToInt64Def( OnlyNumbers(), 0);
+    Result := StrToInt64Def( GetNumbersOnly(), 0);
 end;
 
 procedure TEditPlus.SetIcon(const AValue: TPicture);
@@ -592,22 +601,7 @@ begin
   if FIsCurrency = AValue then Exit;
 
   FIsCurrency := AValue;
-
-  if FIsCurrency then
-    FAlignment := taRightJustify
-  else begin
-    FAlignment := taLeftJustify;
-    FNumericValue := 0;
-  end;
-
-  FPasswordVisible := False;
-  FPasswordChar := #0;
-  FPasswordSpy := False;
-
-  FEdit.Alignment := FAlignment;
-  FEdit.PasswordChar := FPasswordChar;
-  FEdit.NumIsCurrency := AValue;
-
+  Configurar;
   AjustaShowPassword;
 end;
 
@@ -617,6 +611,13 @@ begin
   if FMaxLength = AValue then Exit;
   FMaxLength := AValue;
   FEdit.MaxLength := FMaxLength;
+end;
+
+procedure TEditPlus.SetNumbersOnly(AValue: Boolean);
+begin
+  if FNumbersOnly = AValue then Exit;
+  FNumbersOnly := AValue;
+  FEdit.NumbersOnly := FNumbersOnly;
 end;
 
 procedure TEditPlus.SetNumericValue(AValue: Double);
@@ -636,9 +637,15 @@ end;
 procedure TEditPlus.SetEditText(const AValue: string);
 // define o texto no Edit
 begin
-  FPasswordVisible := False;
   FText := AValue;
-  FEdit.Text := AValue;
+
+  if FEdit.NumbersOnly and (AValue = '') then
+    FEdit.Text := '0'
+  else
+    FEdit.Text := AValue;
+
+  FPasswordVisible := False;
+  Configurar;
   AjustaShowPassword;
 end;
 
@@ -669,6 +676,24 @@ begin
   end;
 
   Invalidate;
+end;
+
+procedure TEditPlus.Configurar;
+//ajusta a entrada de dados
+begin
+  if FIsCurrency then begin
+    FAlignment := taRightJustify;
+    FPasswordVisible := False;
+    FPasswordChar := #0;
+    FPasswordSpy := False;
+  end
+  else begin
+    FAlignment := taLeftJustify;
+    FNumericValue := 0;
+  end;
+
+  FEdit.Alignment := FAlignment;
+  FEdit.PasswordChar := FPasswordChar;
 end;
 
 procedure TEditPlus.SetPlaceholder(const AValue: string);
@@ -704,8 +729,6 @@ begin
   if Assigned(FOnEnter) then
     FOnEnter(Self);
 
-  //FEdit.TextHint := '';
-  //FEdit.PasswordChar := FPasswordChar;
   AjustaShowPassword;
   FSpyButton.Color := FEdit.Color;
 end;
@@ -819,6 +842,7 @@ begin
     SetIsCurrency(False);
 
   FPasswordChar := AValue;
+  Configurar;
   AjustaShowPassword;
 end;
 

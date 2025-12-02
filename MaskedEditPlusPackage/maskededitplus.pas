@@ -93,11 +93,11 @@ type
       procedure SetHint(AValue: string);
       procedure SetIsValid(AValue: Boolean);
       procedure SetMaxLength(AValue: Integer);
+      procedure SetNumbersOnly(AValue: Boolean);
       procedure SetPlaceholder(AValue: string);
       procedure SetReadOnly(AValue: Boolean);
       procedure SetSPasswordSpy(AValue: Boolean);
       procedure SetText(AValue: string);
-      procedure SpyIcon(Sender: TObject);
       procedure UpdatePlaceholder;
       procedure FormatInput;
       //currency
@@ -118,6 +118,7 @@ type
       procedure SpyPassword(Sender: TObject);
       procedure SpyMouseEnter(Sender: TObject);
       procedure SpyMouseLeave(Sender: TObject);
+      procedure SpyIcon(Sender: TObject);
     protected
       procedure Paint; override;
       procedure Resize; override;
@@ -198,12 +199,12 @@ type
       property CurrencyPercent: Boolean read FCurrencyPercent write SetCurrencyPercent default false;
       property DateFmt: TMaskedEditDateFmt read FDateFmt write SetDateFmt;
       property MaxLength: Integer read FMaxLength write SetMaxLength default 0;
-      property NumbersOnly: Boolean read FNumbersOnly write FNumbersOnly default false;
+      property NumbersOnly: Boolean read FNumbersOnly write SetNumbersOnly default false;
       property EditMode: TMaskedEditMode read FEditMode write SetEditMode;
       property DefaultColor: TColor read GetEditDefaultColor write SetEditDefaultColor default clDefault;
       property PasswordSpy: Boolean read FPasswordSpy write SetSPasswordSpy default false;
       property Placeholder: string read FPlaceholder write SetPlaceholder;
-      property Text: string read GetText write SetText; //deprecated 'use Caption no lugar';
+      property Text: string read GetText write SetText;
       property FocusedColor: TColor read FFocusColorText write SetFocusedColor default clGray;
   end;
 
@@ -240,11 +241,11 @@ begin
   FCurrSymbol := 'R$';
   FMaxLength := 0;
   FPasswordSpy := False;
+  FPasswordVisible := false;
   FText := '';
   FHint := '';
   FHintTemp := '';
   FEditMode := emDefault;
-  FPasswordVisible := false;
   FTemFoco := False;
   FFocusColor := $D5FFFF;
   FFocusColorText := clBlue;
@@ -280,6 +281,7 @@ begin
   FEdit.CharCase := FCharCase;
   FEdit.AutoSelect := False;
   FEdit.AutoSize := False;
+  FEdit.NumbersOnly := FNumbersOnly;
   FEdit.OnClick := @EditClick;
   FEdit.OnEnter := @EditEnter;
   FEdit.OnExit := @EditExit;
@@ -593,10 +595,14 @@ end;
 procedure TMaskedEditPlus.Clear;
 begin
   FText := '';
-  FEdit.Text := '';
+
+  if FEdit.NumbersOnly then
+    FEdit.Text := '0'
+  else
+    FEdit.Clear;
+
   FCurrencyValue := 0;
   FIsValid := True;
-  Invalidate;
 end;
 
 function TMaskedEditPlus.GetAlignment: TAlignment;
@@ -778,6 +784,13 @@ begin
   FEdit.MaxLength := AValue;
 end;
 
+procedure TMaskedEditPlus.SetNumbersOnly(AValue: Boolean);
+begin
+  if FNumbersOnly = AValue then Exit;
+  FNumbersOnly := AValue;
+  FEdit.NumbersOnly := FNumbersOnly;
+end;
+
 procedure TMaskedEditPlus.SetPlaceholder(AValue: string);
 begin
   if FPlaceholder = AValue then Exit;
@@ -802,7 +815,13 @@ end;
 procedure TMaskedEditPlus.SetText(AValue: string);
 begin
   FText := AValue;
-  FEdit.Text := AValue;
+  FCurrencyValue := 0;
+
+  if FEdit.NumbersOnly and (AValue = '') then
+    FEdit.Text := '0'
+  else
+    FEdit.Text := AValue;
+
   FIsValid := True;
   Configurar;
 end;
@@ -976,11 +995,11 @@ var
   vlr: String;
   sinal: String;
   valor: Double;
-  erro: Integer = 0;
+  erro: Integer;
   idiv: Float;
 begin
   try
-     vlr := RemoveFormatacaoCurrency(FEdit.Text);
+     vlr := RemoveFormatacaoCurrency(FEdit.Text); //fica penas [-.,0123456789]
 
      If FCurrDecimals < 1 Then begin
        If Key = Chr(8) Then Exit;
@@ -991,24 +1010,27 @@ begin
 
      if key = Chr(0) then Exit;
 
-     vlr := ReplaceStr(vlr, '.', ''); // remove separador de milhares
      sinal := '';
-     idiv  := Power(10.0, FCurrDecimals);
-
      If Pos('-', vlr) >= 1 Then sinal := '-';
 
-     vlr := ReplaceStr(vlr, '-', '');
-     vlr := ReplaceStr(vlr, ',', '');
+     //vai restar em 'vlr' apenas números
+     vlr := OnlyNumbers(vlr);
+     if (vlr = '') then vlr := '0';
+     //vlr := ReplaceStr(vlr, '-', ''); //remove sinal de negativo
+     //vlr := ReplaceStr(vlr, '.', ''); //remove separador de milhares
+     //vlr := ReplaceStr(vlr, ',', ''); //remove separador de decimais
 
+     erro := 0;
+     idiv := Power(10.0, FCurrDecimals);
      Val(vlr, valor, erro);
-
      vlr := FloatToStr(valor);
 
      If Key = Chr(8) Then begin
        Key := Chr(0);
        If Length(vlr) > 0 Then vlr := Copy(vlr, 1, Length(vlr) -1);
      end
-     else begin
+     else
+     begin
        If Length(FEdit.Text) >= FEdit.MaxLength Then begin
          key := chr(0);
          Exit;
@@ -1037,7 +1059,7 @@ begin
      vlr := RemoveFormatacaoCurrency(vlr);
 
      If (not bFormatoREAL) or (FCurrDecimals < 1) Then //'Não coloca "." separando as milhares
-        vlr := ReplaceStr(vlr, '.', '');
+        vlr := ReplaceStr(vlr, DefaultFormatSettings.ThousandSeparator, ''); //'.'
 
      FEdit.Text := sinal + vlr;
      FEdit.SelStart := Length(FEdit.Text);

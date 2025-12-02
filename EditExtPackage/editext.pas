@@ -48,6 +48,7 @@ type
     procedure KeyPress(var Key: Char); override;
   public
     constructor Create(AOwner: TComponent); override;
+    procedure Clear;
   published
     // exibe na paleta de propriedade
     property FocusColor: TColor read FFocusColor write FFocusColor;
@@ -76,17 +77,30 @@ constructor TEditExt.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   //R$ 99.999.999,99 = 13 + 3 = 16 caracteres
+  AutoSelect := False;
+
   Configurar;
 
   FDefaultColor := clWhite;
   FFocusColor := TColor($D5FFFF);
   FFocusColorText := clBlue;
   FDefaultFontColor := Font.Color; //clDefault;
-  FCurSymbol := ''; // 'R$'
+  FCurSymbol := 'R$'; // 'R$'
   FNumericValue := 0.00;
   FDecimalPlaces := 2; // Define 2 casas decimais como padrão
   Text := FormatValue; // Exibe o valor inicial formatado
   UpdateTextColor;     // Atualiza a cor do texto inicial
+end;
+
+procedure TEditExt.Clear;
+begin
+  if NumbersOnly then
+    Text := '0'
+  else
+    Text := '';
+
+  FNumericValue := 0;
+  Invalidate;
 end;
 
 procedure TEditExt.SetNumericValue(AValue: Double);
@@ -202,7 +216,7 @@ begin
   vlr := RemoveFormatacao(vlr);
 
   If (not bFormatoREAL) or (FDecimalPlaces < 1) Then //'Não coloca "." separando as milhares
-     vlr := ReplaceStr(vlr, '.', '');
+     vlr := ReplaceStr(vlr, DefaultFormatSettings.ThousandSeparator, '');
 
   Result := vlr;
 end;
@@ -216,16 +230,16 @@ var
   idiv : Float;
 begin
   num := Trim(s);
-  valor := 0;
+  valor := 0.0;
   erro := 0;
-  idiv := Power(10, FDecimalPlaces);  // 10^x
+  idiv := Power(10.0, FDecimalPlaces);  // 10^x
 
   If num = '' Then num := '0';
 
   // Exemplo: 1.235,99 --> 1235.99
   num := RemoveFormatacao(num);
-  num := ReplaceStr(num, ',', 'p');
-  num := ReplaceStr(num, '.', '');
+  num := ReplaceStr(num, DefaultFormatSettings.DecimalSeparator, 'p'); //','
+  num := ReplaceStr(num, DefaultFormatSettings.ThousandSeparator, ''); //'.'
   num := ReplaceStr(num, 'p', '.');
 
   // transforma em ponto número de flutuante
@@ -247,7 +261,7 @@ var
   idiv: Float;
 begin
   try
-     vlr := RemoveFormatacao(Text);
+     vlr := RemoveFormatacao(Text); //fica penas [-.,0123456789]
 
      If FDecimalPlaces < 1 Then
      begin
@@ -259,17 +273,17 @@ begin
      
      if key = Chr(0) then Exit;
 
-     vlr := ReplaceStr(vlr, '.', ''); // remove separador de milhares
      sinal := '';
-     idiv  := Power(10, FDecimalPlaces);
-
      If Pos('-', vlr) >= 1 Then sinal := '-';
 
-     vlr := ReplaceStr(vlr, '-', '');
-     vlr := ReplaceStr(vlr, ',', '');
+     //vai restar em 'vlr' apenas números
+     vlr := ReplaceStr(vlr, '-', ''); //remove sinal de negativo
+     vlr := ReplaceStr(vlr, '.', ''); //remove separador de milhares
+     vlr := ReplaceStr(vlr, ',', ''); //remove separador de decimais
 
+     erro := 0;
+     idiv := Power(10.0, FDecimalPlaces);
      Val(vlr, valor, erro);
-
      vlr := FloatToStr(valor);
 
      If Key = Chr(8) Then
@@ -314,7 +328,7 @@ begin
      vlr := RemoveFormatacao(vlr);
 
      If (not bFormatoREAL) or (FDecimalPlaces < 1) Then //'Não coloca "." separando as milhares
-        vlr := ReplaceStr(vlr, '.', ''); 
+        vlr := ReplaceStr(vlr, DefaultFormatSettings.ThousandSeparator, ''); //'.'
 
      Text := sinal + vlr;
      SelStart := Length(Text);
