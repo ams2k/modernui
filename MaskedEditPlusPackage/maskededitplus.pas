@@ -602,6 +602,7 @@ begin
     FEdit.Clear;
 
   FCurrencyValue := 0;
+  Saindo;
   FIsValid := True;
 end;
 

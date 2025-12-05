@@ -100,6 +100,7 @@ begin
     Text := '';
 
   FNumericValue := 0;
+  DoExit;
   Invalidate;
 end;
 
@@ -175,7 +176,7 @@ begin
     //Result := FormatFloat(FCurSymbol + '#,##0.' + StringOfChar('0', FDecimalPlaces), FNumericValue);
     Result := NumeroParaReal(FNumericValue, FDecimalPlaces, FIsCurrency);
 
-    if (Length(Result) + Length(simbolo) <= MaxLength) then
+    if (Length(Result) + Length(simbolo) <= MaxLength) or (MaxLength = 0) then
        Result := simbolo + Result;
 
     UpdateTextColor;
