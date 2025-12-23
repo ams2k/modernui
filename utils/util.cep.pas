@@ -15,7 +15,7 @@ interface
 
 uses
   Classes, SysUtils, fpjson, jsonparser,
-  fphttpclient, openssl, opensslsockets;
+  fphttpclient, ssockets, openssl, opensslsockets;
 
 type
 
@@ -67,19 +67,21 @@ begin
   Result := '';
   FErro  := '';
 
-  if (ACEP < 1) or (ACEP > 99999999) then begin
-    FErro := 'Cep inválido';
-    Exit;
-  end;
+  if ACEP < 1 then Exit;
 
   httpClient := TFPHTTPClient.Create(nil);
 
   try
     try
+      // Definir o protocolo SSL
       // Adicionar cabeçalho user-agent para evitar bloqueio de requisições
       httpClient.AddHeader('User-Agent', 'Mozilla/5.0');
       Result := httpClient.Get('https://viacep.com.br/ws/'+ RightStr('00000000' + IntToStr(ACEP), 8) + '/json');
     except
+      on e: ESocketError do begin
+        Result := '';
+        FErro := e.Message;
+      end;
       on e: Exception do begin
         Result := '';
         FErro := e.Message;
@@ -95,21 +97,22 @@ end;
 
 function TUtilCep.GetCEP(ACEP: Integer): Boolean;
 var
-  lres: string;
+  res: string;
   lobj: TJSONData;
   lJson: TJSONObject;
 begin
   Result := False;
-  lres    := ApiCEP( ACEP );
+  FErro  := '';
+  res    := ApiCEP( ACEP );
 
   if FErro <> '' then Exit;
 
-  if Length(lres) > 0 then begin
+  if Length(res) > 0 then begin
      FErro  := '';
 
      try
        try
-         lobj  := GetJSON( lres ); //será liberado da memória em lJson.Free
+         lobj := GetJSON( res ); //será liberado da memória em lJson.Free
          lJson := TJSONObject( lobj );
 
          FLogradouro  := lJson.Get('logradouro', '');
@@ -125,16 +128,13 @@ begin
          FDDD         := lJson.Get('ddd', '');
          FSIAFI       := lJson.Get('siafi', '');
 
-         Result       := (FLogradouro <> '');
-
-         if not Result then
-           FErro := 'Cep não encontrado';
+         Result       := True;
        except
          on E: Exception do
            FErro  := E.Message;
        end;
      finally
-       lres := '';
+       res := '';
        lJson.Free;
      end;
   end;

@@ -38,7 +38,7 @@ type
       FMaxLength: Integer;
       FNumbersOnly: Boolean;
       FOnChange: TNotifyEvent;
-      FOnClick: TKeyEvent;
+      FOnClick: TNotifyEvent;
       FOnEnter: TNotifyEvent;
       FOnExit: TNotifyEvent;
       FOnKeyDown: TKeyEvent;
@@ -123,6 +123,9 @@ type
       procedure Paint; override;
       procedure Resize; override;
       procedure SetFocus; override;
+      procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+      procedure DoEnter; override;
+      procedure DoExit; override;
 
       procedure EditChange(Sender: TObject);
       procedure EditClick(Sender: TObject);
@@ -174,7 +177,7 @@ type
       property ShowHint;
       property Visible;
 
-      property OnClick;
+      property OnClick: TNotifyEvent read FOnClick write FOnClick;
       property OnChange: TNotifyEvent read FOnChange write FOnChange;
       property OnEnter: TNotifyEvent read FOnEnter write FOnEnter;
       property OnExit: TNotifyEvent read FOnExit write FOnExit;
@@ -224,12 +227,15 @@ constructor TMaskedEditPlus.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
 
+  ControlStyle := ControlStyle + [csAcceptsControls, csSetCaption, csOpaque];
+  DoubleBuffered := True;
+
+  FEditDefaultColor := clWhite; //clBtnFace;
   Width := 150;
   Height := 27;
-  DoubleBuffered := True;
-  ControlStyle := ControlStyle + [csAcceptsControls, csSetCaption];
   TabStop := True;
   Visible := True;
+  Color := FEditDefaultColor;
 
   FBorderColor := $00BCBEBF;
   FBorderRadius := 4;
@@ -249,7 +255,6 @@ begin
   FTemFoco := False;
   FFocusColor := $D5FFFF;
   FFocusColorText := clBlue;
-  FEditDefaultColor := clDefault; //clBtnFace;
   FDateFmt:= edDMY;
   FCurrencyValue := 0.0;
   FCurrencyPercent := False;
@@ -261,26 +266,19 @@ begin
   // Edit box
   FEdit := TEdit.Create(Self);
   FEdit.Parent := Self;
-  FEdit.Align := alClient;
   Fedit.Alignment := taLeftJustify;
-  FEdit.Anchors := [akTop, akLeft, akRight, akBottom];
-  FEdit.AnchorSideLeft.Side := asrBottom;
-  FEdit.AnchorSideRight.Side := asrBottom;
-  FEdit.AnchorSideBottom.Side := asrBottom;
-  FEdit.BorderSpacing.Left := 1;
-  FEdit.BorderSpacing.Top := 1;
-  FEdit.BorderSpacing.Right := 1;
-  FEdit.BorderSpacing.Bottom := 1;
-  FEdit.BorderSpacing.Around := 1;
+  FEdit.Anchors := [akLeft, akRight];
+  FEdit.AnchorSideLeft.Side := asrLeft;
+  FEdit.AnchorSideRight.Side := asrRight;
   FEdit.BorderStyle := bsNone;
-  FEDIT.Height := Height;
+  FEdit.Left := 3;
   FEdit.TabStop := True;
   FEdit.Text := FText;
   FEdit.ParentFont := True;
   Fedit.Color := FEditDefaultColor;
   FEdit.CharCase := FCharCase;
   FEdit.AutoSelect := False;
-  FEdit.AutoSize := False;
+  FEdit.AutoSize := True;
   FEdit.NumbersOnly := FNumbersOnly;
   FEdit.OnClick := @EditClick;
   FEdit.OnEnter := @EditEnter;
@@ -327,6 +325,7 @@ begin
   FSpyButton.OnPaint := @SpyIcon;
 
   Configurar;
+  Color := FEdit.Color;
   Invalidate;
 end;
 
@@ -545,51 +544,33 @@ begin
   end;
 end;
 
-procedure TMaskedEditPlus.Paint;
-var
-  R: TRect;
-  cor: TColor;
-begin
-  inherited Paint;
-
-  //desenha a borda do objeto
-  if FBorderWidth > 0 then begin
-    cor := FBorderColor;
-    if FTemFoco then cor := clSkyBlue; // FFocusColorText;
-    if not FIsValid then cor := clRed;
-
-    Canvas.Brush.Style := bsClear;
-    Canvas.Pen.Color := cor;
-    Canvas.Pen.Width := FBorderWidth;
-    Canvas.Pen.Style := FBorderStyle;
-    R := ClientRect;
-
-    if FBorderBottom then begin
-      Canvas.Pen.Width := 2;
-      Canvas.MoveTo(R.Left+2, R.Bottom-1);
-      Canvas.LineTo(R.Right-2, R.Bottom-1);
-    end
-    else
-      if FBorderRadius > 0 then
-        Canvas.RoundRect(R, FBorderRadius, FBorderRadius)
-      else
-        Canvas.Rectangle(R);
-  end;
-end;
-
-procedure TMaskedEditPlus.Resize;
-begin
-  inherited Resize;
-  if Height < 20 then Height := 20;
-  if Width < 20 then Width := 20;
-  Invalidate;
-end;
-
 procedure TMaskedEditPlus.SetFocus;
 begin
   inherited SetFocus;
   if Assigned(FEdit) and FEdit.CanFocus then
     FEdit.SetFocus;
+end;
+
+procedure TMaskedEditPlus.MouseDown(Button: TMouseButton; Shift: TShiftState;
+  X, Y: Integer);
+begin
+  inherited MouseDown(Button, Shift, X, Y);
+  if Button = mbLeft then begin
+    Entrando;
+    SetFocus;
+  end;
+end;
+
+procedure TMaskedEditPlus.DoEnter;
+begin
+  inherited DoEnter;
+  Entrando;
+end;
+
+procedure TMaskedEditPlus.DoExit;
+begin
+  inherited DoExit;
+  Saindo;
 end;
 
 procedure TMaskedEditPlus.Clear;
@@ -739,6 +720,7 @@ begin
   if FEditDefaultColor = AValue then Exit;
   FEditDefaultColor := AValue;
   FEdit.Color := AValue;
+  Color := AValue;
 end;
 
 procedure TMaskedEditPlus.SetEditMode(AValue: TMaskedEditMode);
@@ -1364,6 +1346,7 @@ begin
   FEdit.Enabled := Enabled;
   FEdit.ReadOnly := ReadOnly;
   FMaxLength := FEdit.MaxLength;
+  Color := FEdit.Color;
 end;
 
 procedure TMaskedEditPlus.Entrando;
@@ -1375,6 +1358,7 @@ begin
     FTemFoco := True;
     FEdit.Color := FFocusColor;
     FEdit.Font.Color := FFocusColorText;
+    Color := FFocusColor;
   end;
 
   case FEditMode of
@@ -1463,6 +1447,7 @@ begin
   end;
 
   FEdit.Color := FEditDefaultColor;
+  Color := FEditDefaultColor;
   UpdatePlaceholder;
 end;
 
@@ -1668,6 +1653,77 @@ begin
       FEdit.PasswordChar := #0
     else
       FEdit.PasswordChar := '*';
+  end;
+
+  Invalidate;
+end;
+
+procedure TMaskedEditPlus.Paint;
+var
+  R: TRect;
+  cor: TColor;
+begin
+  inherited Paint;
+
+  //para evitar "fantasmas" nos cantos
+  Canvas.Brush.Color := Parent.Color;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.FillRect(ClientRect);
+
+  //cor do fundo do componente (o retângulo arredondado)
+  if Assigned(FEdit) then
+    Canvas.Brush.Color := FEdit.Color
+  else
+    Canvas.Brush.Color := FEditDefaultColor;
+
+  if not Enabled then begin
+    Canvas.Brush.Color := TColor($00E7E7E7);
+    Self.Cursor := crDefault;
+  end
+  else
+    Self.Cursor := crIBeam;
+
+  //desenha a borda do objeto
+  if FBorderWidth > 0 then begin
+    cor := FBorderColor;
+    if FTemFoco then cor := clSkyBlue; // FFocusColorText; //FEditDefaultColor
+    if not FIsValid then cor := clRed;
+
+    Canvas.Pen.Color := cor;
+    Canvas.Pen.Width := FBorderWidth;
+    Canvas.Pen.Style := FBorderStyle;
+    R := ClientRect;
+
+    if FBorderBottom then begin
+      Canvas.Pen.Width := 2;
+      Canvas.MoveTo(R.Left+2, R.Bottom-1);
+      Canvas.LineTo(R.Right-2, R.Bottom-1);
+    end
+    else
+      if FBorderRadius > 0 then
+        Canvas.RoundRect(R, FBorderRadius, FBorderRadius)
+      else
+        Canvas.Rectangle(R);
+  end
+  else
+    Canvas.Rectangle(R);
+end;
+
+procedure TMaskedEditPlus.Resize;
+begin
+  inherited Resize;
+  if Height < 20 then Height := 20;
+  if Width < 20 then Width := 20;
+
+  if Assigned(FEdit) then begin
+    if FEdit.Height >= Height then Height := FEdit.Height + 4;
+
+    FEdit.Top := (ClientHeight - FEdit.Height) div 2;
+
+    if FSpyButton.Visible then
+      FEdit.Width := ClientWidth - FSpyButton.Width - FEdit.Left - 3
+    else
+      FEdit.Width := ClientWidth - FEdit.Left - 3
   end;
 
   Invalidate;
