@@ -1706,7 +1706,7 @@ begin
         Canvas.Rectangle(R);
   end
   else
-    Canvas.Rectangle(R);
+    Canvas.Rectangle(ClientRect);
 end;
 
 procedure TMaskedEditPlus.Resize;

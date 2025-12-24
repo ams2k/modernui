@@ -124,6 +124,9 @@ type
     procedure Paint; override;
     procedure Resize; override;
     procedure SetFocus; override;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer); override;
+    procedure DoEnter; override;
+    procedure DoExit; override;
 
     procedure EditChange(Sender: TObject);
     procedure EditClick(Sender: TObject);
@@ -221,12 +224,15 @@ constructor TEditPlus.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
 
+  ControlStyle := ControlStyle + [csAcceptsControls, csSetCaption, csOpaque];
+  DoubleBuffered := True;
+
+  FEditDefaultColor := clWhite; //clBtnFace;
   Width := 150;
   Height := 32;
-  DoubleBuffered := True;
-  ControlStyle := ControlStyle + [csAcceptsControls, csSetCaption];
   TabStop := True;
   FAlignment := taLeftJustify;
+  Color := FEditDefaultColor;
 
   FBorderEnabled := True;
   FBorderColor := $00BCBEBF;
@@ -237,7 +243,6 @@ begin
   FHint := '';
   FHintTemp := '';
   FFocusColorText := clBlue;
-  FEditDefaultColor := clDefault; //clBtnFace;
   FNumbersOnly := False;
 
   FDefaultIconWidth := 27;
@@ -276,18 +281,10 @@ begin
   // Edit box
   FEdit := TEditExt.Create(Self);
   FEdit.Parent := Self;
-  FEdit.Align := alClient;
   Fedit.Alignment := taLeftJustify;
-  FEdit.Anchors := [akTop, akLeft, akRight, akBottom];
-  FEdit.AnchorSideLeft.Control := FImage;
-  FEdit.AnchorSideLeft.Side := asrBottom;
-  FEdit.AnchorSideRight.Side := asrBottom;
-  FEdit.AnchorSideBottom.Side := asrBottom;
-  FEdit.BorderSpacing.Left := 1;
-  FEdit.BorderSpacing.Top := 1;
-  FEdit.BorderSpacing.Right := FRecuoRight;
-  FEdit.BorderSpacing.Bottom := 2;
-  //FEdit.BorderSpacing.Around := 1;
+  FEdit.Anchors := [akLeft, akRight];
+  FEdit.AnchorSideLeft.Side := asrLeft;
+  FEdit.AnchorSideRight.Side := asrRight;
   FEdit.BorderStyle := bsNone;
   FEdit.TabStop := True;
   FEdit.CharCase := FCharCase;
@@ -296,8 +293,7 @@ begin
   FEdit.ParentFont := True;
   Fedit.Color := FEditDefaultColor; //clBtnFace
   FEdit.AutoSelect := False;
-  FEdit.AutoSize := False;
-  FEDIT.Height := Height;
+  FEdit.AutoSize := True;
   FEdit.NumbersOnly := FNumbersOnly;
   FEdit.OnClick := @EditClick;
   FEdit.OnEnter := @EditEnter;
@@ -342,6 +338,9 @@ begin
   FSpyButton.OnMouseEnter := @SpyMouseEnter;
   FSpyButton.OnMouseLeave := @SpyMouseLeave;
   FSpyButton.OnPaint := @SpyIcon;
+
+  Color := FEdit.Color;
+  Invalidate;
 end;
 
 destructor TEditPlus.Destroy;
@@ -426,11 +425,6 @@ begin
   if FIconVisible = AValue then Exit;
   FIconVisible := AValue;
   FImage.Visible := FIconVisible;
-
-  if AValue then
-    FEdit.BorderSpacing.Left := 1
-  else
-    FEdit.BorderSpacing.Left := 2;
 
   Invalidate;
 end;
@@ -675,6 +669,7 @@ begin
       FEdit.PasswordChar := '*';
   end;
 
+  Color := FEdit.Color;
   Invalidate;
 end;
 
@@ -694,6 +689,7 @@ begin
 
   FEdit.Alignment := FAlignment;
   FEdit.PasswordChar := FPasswordChar;
+  Color := FEdit.Color;
 end;
 
 procedure TEditPlus.SetPlaceholder(const AValue: string);
@@ -729,8 +725,8 @@ begin
   if Assigned(FOnEnter) then
     FOnEnter(Self);
 
-  AjustaShowPassword;
   FSpyButton.Color := FEdit.Color;
+  AjustaShowPassword;
 end;
 
 procedure TEditPlus.EditExit(Sender: TObject);
@@ -800,8 +796,7 @@ begin
     FOnMouseUp(Self, Button, Shift, X, Y);
 end;
 
-procedure TEditPlus.EditMouseMove(Sender: TObject; Shift: TShiftState; X,
-  Y: Integer);
+procedure TEditPlus.EditMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 begin
   if Assigned(FOnMouseMove) then
     FOnMouseMove(Self, Shift, X, Y);
@@ -961,8 +956,28 @@ begin
 end;
 
 procedure TEditPlus.Resize;
+var
+  lpos, lwidth: integer;
+
 begin
   inherited Resize;
+
+  if Height < 20 then Height := 20;
+  if Width < 20 then Width := 20;
+
+  if Assigned(FEdit) then begin
+    lwidth := ClientWidth;
+    if FImage.Visible then lwidth := lwidth - FImage.Width;
+    if FSpyButton.Visible then lwidth := lwidth - FSpyButton.Width;
+
+    if FImage.Visible then lpos := FImage.Left + FImage.Width else lpos := 0;
+
+    if FEdit.Height >= Height then Height := FEdit.Height + 4;
+
+    FEdit.Top := (ClientHeight - FEdit.Height) div 2;
+    FEdit.Left := lpos + 3;
+    FEdit.Width := lwidth - 6;
+  end;
 
   Invalidate;
 end;
@@ -974,36 +989,105 @@ begin
     FEdit.SetFocus;
 end;
 
+procedure TEditPlus.MouseDown(Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  inherited MouseDown(Button, Shift, X, Y);
+
+  if Button = mbLeft then begin
+    SetFocus;
+    Color := FEdit.Color;
+    Invalidate;
+  end;
+end;
+
+procedure TEditPlus.DoEnter;
+begin
+  //inherited DoEnter;
+  if FReadOnly then Exit;
+  if Assigned(FOnEnter) then
+    FOnEnter(Self);
+
+  Color := FEdit.Color;
+  Invalidate;
+end;
+
+procedure TEditPlus.DoExit;
+begin
+  //inherited DoExit;
+  if Assigned(FOnExit) then
+    FOnExit(Self);
+
+  Color := FEdit.Color;
+  Invalidate;
+end;
+
 procedure TEditPlus.Paint;
 var
   R: TRect;
+  cor: TColor;
 begin
   inherited Paint;
+
+  Self.Cursor := crIBeam;
+
+  //para evitar "fantasmas" nos cantos
+  Canvas.Brush.Color := Parent.Color;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.FillRect(ClientRect);
+
+  //cor do fundo do componente
+  cor := FEditDefaultColor;
+
+  if not Enabled then begin
+    cor := TColor($00E7E7E7);
+    Self.Cursor := crDefault;
+  end;
+
+  //desenha a borda do objeto
+  Canvas.Brush.Color := cor;
+
+  if FBorderEnabled then begin
+    R := ClientRect;
+    Canvas.Pen.Color := FBorderColor;
+    Canvas.Pen.Width := FBorderLineWidth;
+    Canvas.Pen.Style := FBorderLineStyle;
+    //R := Rect(0, 0, Width - 1, Height - 1);
+
+    if FCornerRadius > 0 then
+      Canvas.RoundRect(R, FCornerRadius, FCornerRadius)
+    else
+      Canvas.Rectangle(R);
+  end
+  else
+    Canvas.Rectangle(ClientRect);
 
   // pinta o fundo da área do ícone
   if (FIconVisible) and (FIconWidth > 0) and (not FIconTransparent) then begin
     R := ClientRect;
-    R.Right := FImage.Left + FIconWidth + 1;
+    R.Top := R.Top + 1;
+    R.Left := R.Left + 1;
+    R.Width := FImage.Width;
     R.Height := R.Height - 2;
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := FIconBackColor;
     Canvas.FillRect(R);
   end;
 
-  //desenha a borda do objeto
-  if FBorderEnabled then begin
-    Canvas.Brush.Style := bsClear;
-    Canvas.Pen.Color := FBorderColor;
-    Canvas.Pen.Width := FBorderLineWidth;
-    Canvas.Pen.Style := FBorderLineStyle;
-    //R := Rect(0, 0, Width - 1, Height - 1);
-    R := ClientRect;
 
-    if FCornerRadius > 0 then
-      Canvas.RoundRect(R, FCornerRadius, FCornerRadius)
-    else
-      Canvas.Rectangle(R);
-  end;
+  if not Enabled then
+    cor := TColor($00E7E7E7)
+  else
+    cor := FEdit.Color;
+
+  //pinta o fundo do Edit
+  R := ClientRect;
+  R.Top := R.Top + 1;
+  R.Left := FEdit.Left;
+  R.Bottom := R.Bottom - 1;
+  R.Width := FEdit.Width - 1;
+  Canvas.Pen.Style := psClear;
+  Canvas.Brush.Color := cor;
+  Canvas.Rectangle(R);
 end;
 
 initialization
