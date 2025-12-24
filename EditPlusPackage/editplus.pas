@@ -1025,6 +1025,7 @@ procedure TEditPlus.Paint;
 var
   R: TRect;
   cor: TColor;
+  lLeft: integer;
 begin
   inherited Paint;
 
@@ -1061,6 +1062,8 @@ begin
   else
     Canvas.Rectangle(ClientRect);
 
+  lLeft := 1;
+
   // pinta o fundo da área do ícone
   if (FIconVisible) and (FIconWidth > 0) and (not FIconTransparent) then begin
     R := ClientRect;
@@ -1071,8 +1074,8 @@ begin
     Canvas.Brush.Style := bsSolid;
     Canvas.Brush.Color := FIconBackColor;
     Canvas.FillRect(R);
+    lLeft := FEdit.Left;
   end;
-
 
   if not Enabled then
     cor := TColor($00E7E7E7)
@@ -1082,12 +1085,33 @@ begin
   //pinta o fundo do Edit
   R := ClientRect;
   R.Top := R.Top + 1;
-  R.Left := FEdit.Left;
+  R.Left := lLeft;
   R.Bottom := R.Bottom - 1;
-  R.Width := FEdit.Width - 1;
+  R.Width := FEdit.Width + 1;
   Canvas.Pen.Style := psClear;
   Canvas.Brush.Color := cor;
+  Canvas.Brush.Style := bsSolid;
   Canvas.Rectangle(R);
+
+  //redesenha a borda novamente
+  Canvas.Brush.Style := bsClear;
+
+  if FBorderEnabled then begin
+    cor := FBorderColor;
+    if FEdit.Focused then cor := clSkyBlue;
+
+    R := ClientRect;
+    Canvas.Pen.Color := cor;
+    Canvas.Pen.Width := FBorderLineWidth;
+    Canvas.Pen.Style := FBorderLineStyle;
+
+    if FCornerRadius > 0 then
+      Canvas.RoundRect(R, FCornerRadius, FCornerRadius)
+    else
+      Canvas.Rectangle(R);
+  end
+  else
+    Canvas.Rectangle(ClientRect);
 end;
 
 initialization
