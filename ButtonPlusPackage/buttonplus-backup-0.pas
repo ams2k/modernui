@@ -6,25 +6,17 @@ interface
 
 uses
   Classes, SysUtils, Graphics, LCLType, LCLIntf, Controls, Types, LMessages,
-  LResources, ExtCtrls, StdCtrls, ImgList, Math;
+  LResources, ExtCtrls, StdCtrls, Math;
 
 type
-  TButtonPlusStyle = (mbsPrimary, mbsSuccess, mbsDanger, mbsFlat, mbsOutlined, mbsNormal, mbsGray);
+  TButtonPlusStyle = (mbsPrimary, mbsSuccess, mbsDanger, mbsFlat, mbsOutlined, mbsNormal);
 
   { TButtonPlus }
 
   TButtonPlus = class(TCustomControl)
   private
     FIcon: TPicture;
-    FIconBackColor: TColor;
     FImage: TImage;
-
-    FBlinkTimer: TTimer;
-    FBlinkState: Boolean;
-    FBlinkCount: Integer;
-    FBlinkMaxCount: Integer;
-    FBlinkInterval: Integer;
-    FBlinkDuration: Integer;
 
     FBorderEnabled: Boolean;
     FBorderLineStyle: TPenStyle;
@@ -33,8 +25,6 @@ type
     FIconTransparent: Boolean;
     FIconVisible: Boolean;
     FIconWidth: Integer;
-    FImageIndex: Integer;
-    FImages: TCustomImageList;
     FStyle: TButtonPlusStyle;
     FHover: Boolean;
     FCaption: String;
@@ -47,19 +37,16 @@ type
     FCaptionAlignment: TAlignment;
     FUseGradient: Boolean;
 
-    procedure DoBlink(Sender: TObject);
     procedure SetBorderEnabled(AValue: Boolean);
     procedure SetBorderLineStyle(AValue: TPenStyle);
     procedure SetBorderLineWidth(AValue: Integer);
     procedure SetCaption(const AValue: String);
     procedure SetColorMouseIn(AValue: TColor);
     procedure SetColorMouseOut(AValue: TColor);
-    procedure SetIconBackColor(AValue: TColor);
     procedure SetIconStretch(AValue: Boolean);
     procedure SetIconTransparent(AValue: Boolean);
     procedure SetIconVisible(AValue: Boolean);
     procedure SetIconWidth(AValue: Integer);
-    procedure SetImageIndex(AValue: Integer);
     procedure SetStyle(const AValue: TButtonPlusStyle);
     procedure SetIcon(const AValue: TPicture);
     procedure SetCornerRadius(AValue: Integer);
@@ -86,40 +73,24 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
+    property OnClick;
     property Align;
     property Anchors;
-    property Color;
     property Enabled;
     property Font;
     property ParentFont;
     property ParentColor;
-    property PopupMenu;
-    property ShowHint;
-    property TabOrder;
     property TabStop default True;
-    property Visible;
-    property OnClick;
-    property OnEnter;
-    property OnExit;
-    property OnMouseDown;
-    property OnMouseEnter;
-    property OnMouseLeave;
-    property OnMouseMove;
-    property OnMouseUp;
 
     property Caption: String read FCaption write SetCaption;
     property CaptionAlignment: TAlignment read FCaptionAlignment write SetCaptionAlignment;
-    property Style: TButtonPlusStyle read FStyle write SetStyle default mbsPrimary;
-
-    property Images: TCustomImageList read FImages write FImages;
-    property ImageIndex: Integer read FImageIndex write SetImageIndex default -1;
+    property Style: TButtonPlusStyle read FStyle write SetStyle default mbsFlat;
 
     property Icon: TPicture read FIcon write SetIcon;
     property IconVisible: Boolean read FIconVisible write SetIconVisible default True;
     property IconStretch: Boolean read FIconStretch write SetIconStretch default False;
     property IconWidth: Integer read FIconWidth write SetIconWidth default 30;
     property IconTransparent: Boolean read FIconTransparent write SetIconTransparent default False;
-    property IconBackColor: TColor read FIconBackColor write SetIconBackColor default clWhite;
 
     property Spacing: Integer read FSpacing write FSpacing;
     property TextColor: TColor read FTextColor write FTextColor;
@@ -154,16 +125,9 @@ begin
   Height := 32;
   Width := 100;
   Font.Color := clWhite;
-  //Font.Name := 'Segoe UI';
-  //Font.Size := 10;
+  Font.Name := 'Segoe UI';
+  Font.Size := 10;
   TabStop := True;
-
-  FBlinkInterval := 50; // ms
-  FBlinkDuration := 200; // ms
-  FBlinkTimer := TTimer.Create(Self);
-  FBlinkTimer.Interval := 10;
-  FBlinkTimer.Enabled := False;
-  FBlinkTimer.OnTimer := @DoBlink;
 
   FCaption := 'Button Plus';
   FSpacing := 8;
@@ -171,15 +135,13 @@ begin
   FHover := False;
   FStyle := mbsPrimary;
 
-  FImageIndex := -1;
   FIconTransparent := False;
   FIconVisible := True;
   FIconStretch := False;
   FIconWidth := 30;
-  FIconBackColor := clWhite;
 
   FBorderEnabled := True;
-  FBorderColor := $00BCBEBF;
+  FBorderColor := clGray;
   FCornerRadius := 0;
   FBorderLineStyle := psSolid;
   FBorderLineWidth := 1;
@@ -219,7 +181,6 @@ destructor TButtonPlus.Destroy;
 begin
   FIcon.Free;
   FreeAndNil(FImage);
-  FBlinkTimer.Free;
   inherited Destroy;
 end;
 
@@ -244,34 +205,11 @@ begin
   Invalidate;
 end;
 
-procedure TButtonPlus.SetIconBackColor(AValue: TColor);
-begin
-  if FIconBackColor = AValue then Exit;
-  FIconBackColor := AValue;
-  Invalidate;
-end;
-
 procedure TButtonPlus.SetBorderLineStyle(AValue: TPenStyle);
 begin
   if FBorderLineStyle = AValue then Exit;
   FBorderLineStyle := AValue;
   Invalidate;
-end;
-
-procedure TButtonPlus.DoBlink(Sender: TObject);
-begin
-  Inc(FBlinkCount);
-  FBlinkState := not FBlinkState;
-
-  FHover := FBlinkState;
-
-  Invalidate;
-
-  if FBlinkCount * FBlinkInterval >= FBlinkDuration then begin
-    FBlinkTimer.Enabled := False;
-    Invalidate;
-    inherited Click;
-  end;
 end;
 
 procedure TButtonPlus.SetBorderEnabled(AValue: Boolean);
@@ -319,26 +257,6 @@ begin
   Invalidate;
 end;
 
-procedure TButtonPlus.SetImageIndex(AValue: Integer);
-var
-  TempBitmap: TBitmap;
-begin
-  if FImageIndex = AValue then Exit;
-  FImageIndex := AValue;
-
-  if Assigned(FImages) and (FImageIndex >= 0) and (FImageIndex < FImages.Count) then begin
-    TempBitmap := TBitmap.Create;
-    try
-      TempBitmap.SetSize(FImages.Width, FImages.Height);
-      FImages.GetBitmap(FImageIndex, TempBitmap);
-      FIcon.Assign(TempBitmap); // ou: FIcon.Bitmap := TempBitmap;
-      Invalidate;
-    finally
-      TempBitmap.Free;
-    end;
-  end;
-end;
-
 procedure TButtonPlus.SetCaptionAlignment(AValue: TAlignment);
 begin
   if FCaptionAlignment = AValue then Exit;
@@ -378,9 +296,7 @@ end;
 
 procedure TButtonPlus.IconChanged(Sender: TObject);
 begin
-  if Assigned(FImage) then
-    FImage.Picture := FIcon;
-
+  FImage.Picture := FIcon;
   Invalidate;
 end;
 
@@ -417,8 +333,8 @@ begin
       end;
     mbsOutlined:
       begin
-        FColorMouseOut := $00E6E6E6;
-        FColorMouseIn := clNone;
+        FColorMouseOut := clNone;
+        FColorMouseIn := $FFE6E6E6;
         FBorderColor := $007337F5;
         FTextColor := $007337F5;
       end;
@@ -428,16 +344,6 @@ begin
         FColorMouseIn := HTMLColorToRGB('#bbbbbb');
         FBorderColor := HTMLColorToRGB('#707070');
         FTextColor := clBlack;
-      end;
-    mbsGray:
-      begin
-        FColorMouseOut := clGray;
-        FColorMouseIn := clGray;
-        FBorderColor := clSkyBlue;
-        FTextColor := clWhite;
-        FUseGradient := True;
-        FIconTransparent := True;
-        FImage.Transparent := True;
       end;
   end;
 end;
@@ -544,26 +450,12 @@ end;
 
 procedure TButtonPlus.Click;
 begin
-  // Iniciar piscada
-  FBlinkCount := 0;
-  FBlinkState := False;
-  FBlinkTimer.Interval := FBlinkInterval;
-  FBlinkMaxCount := FBlinkDuration div FBlinkInterval;
-  FBlinkTimer.Enabled := True;
-
-  //inherited Click;
+  inherited Click;
 end;
 
 procedure TButtonPlus.ImageClick(Sender: TObject);
 begin
-  // Iniciar piscada
-  FBlinkCount := 0;
-  FBlinkState := False;
-  FBlinkTimer.Interval := FBlinkInterval;
-  FBlinkMaxCount := FBlinkDuration div FBlinkInterval;
-  FBlinkTimer.Enabled := True;
-
-  //inherited Click;
+  inherited Click;
 end;
 
 procedure TButtonPlus.ImageMouseEnter(Sender: TObject);
@@ -615,12 +507,11 @@ begin
   iLimite := 0;
 
   // pinta o fundo da área do ícone
-  if FIconVisible and (FIconWidth > 0) and not FIconTransparent then
-  begin
-    iLimite := FImage.Left + FIconWidth + 1;
+  if (FIconVisible) and (FIconWidth > 0) and (not FIconTransparent) then begin
+    iLimite := FImage.Left + FIconWidth + 2;
     R.Right := iLimite;
     Canvas.Brush.Style := bsSolid;
-    Canvas.Brush.Color := FIconBackColor;
+    Canvas.Brush.Color := clWhite;
     Canvas.FillRect(R);
     R := ClientRect;
     R.Left := iLimite;
@@ -633,8 +524,7 @@ begin
     Canvas.Brush.Color := FColorMouseOut;
 
   // cor de fundo
-  if FUseGradient and not FHover and (FColorMouseOut <> clNone) then
-  begin
+  if (FUseGradient) and (not FHover) and (FColorMouseOut <> clNone) then begin
     // gradiente de fundo dos títulos
     Color1 := FColorMouseOut;
     Color2 := LightenColor(FColorMouseOut, 55);
@@ -643,9 +533,7 @@ begin
     R := Rect(iLimite, 0, Width - 1, Height - 1);
     Canvas.Pen.Style := psSolid;
     Canvas.GradientFill(R, Color1, Color2, gdVertical);
-  end
-  else
-  begin
+  end else begin
     // fundo sem gradiente
     R := Rect(iLimite, 0, Width - 1, Height - 1);
     Canvas.Brush.Style := bsSolid;
@@ -654,15 +542,13 @@ begin
   end;
 
   // Definição de borda
-  if (FStyle = mbsOutlined) then
-  begin
+  if FStyle = mbsOutlined then begin
     Canvas.Brush.Style := bsClear;
     Canvas.Pen.Style := FBorderLineStyle;
     Canvas.Pen.Color := FTextColor;
     Canvas.Pen.Width := FBorderLineWidth;
   end
-  else if FBorderEnabled then
-  begin
+  else if FBorderEnabled then begin
     Canvas.Brush.Style := bsClear;
     Canvas.Pen.Style := FBorderLineStyle;
     Canvas.Pen.Color := FBorderColor;
@@ -672,19 +558,19 @@ begin
   // pinta a borda
   R := ClientRect;
 
-  if (FCornerRadius > 0) then
+  if FCornerRadius > 0 then
     Canvas.RoundRect(R, FCornerRadius, FCornerRadius)
   else
     Canvas.Rectangle(R);
 
   // para o texto
-  R.Left := 8;
-
   if FIconVisible then
-    R.Left := 4 + FImage.Width + FSpacing;
+    R.Left := 4 + FImage.Width + FSpacing
+  else
+    R.Left := 8;
 
   R.Right := Width - 1;
-
+  // Texto
   Canvas.Font.Color := FTextColor;
   Canvas.Brush.Style := bsClear;
   DrawCaptionText(Canvas, R, FCaption, FCaptionAlignment);

@@ -517,7 +517,7 @@ begin
     emCpf, emCnpj, emCep, emPhone:
       Result := OnlyNumbers(FEdit.Text);
     emCurrency:
-      Result := RemoveFormatacaoCurrency(FEdit.Text).Replace('.','').Replace(',','.');
+      Result := RemoveFormatacaoCurrency(FEdit.Text);
   else
     Result := FEdit.Text;
   end;
