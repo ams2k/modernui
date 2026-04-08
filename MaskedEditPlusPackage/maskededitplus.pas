@@ -9,7 +9,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, StdCtrls, ExtCtrls, Graphics, LCLType, LCLIntf, LResources,
-  Types, DateUtils, StrUtils, Math, Strings,
+  Types, DateUtils, StrUtils, Math, Strings, RegExpr,
   FPImage, FPReadPNG, FPReadJPEG;
 
 type
@@ -64,12 +64,17 @@ type
       FEditDefaultColor: TColor;
       FChangingText: Boolean;
       procedure AjustaShowPassword;
+      function CalculaDigito_CNPJ(const cnpj: string): Integer;
+      function CalculaDV_CNPJ(baseCnpj: string): string;
       procedure Configurar;
       procedure Entrando;
       function GetCharCase: TEditCharCase;
       function GetDateValue: TDate;
       function GetEditDefaultColor: TColor;
       function GetHint: string;
+      function IsCnpjFormacaoValidaComDV(cnpj: string): boolean;
+      function IsCnpjFormacaoValidaSemDV(cnpj: string): boolean;
+      function RemoveFormatacao_CNPJ(cnpj: string): string;
       procedure Saindo;
       function GetAlignment: TAlignment;
       function GetCurrencyValue: Double;
@@ -145,7 +150,7 @@ type
       property DateValue: TDate read GetDateValue write SetDateValue;
       procedure Clear;
       function IsValidCPF(ACPF: string = ''): Boolean;
-      function IsValidCNPJ(ACNPJ: string = ''): Boolean;
+      function IsValidCNPJ(const ACNPJ: string): Boolean;
       property IsValid: Boolean read FIsValid write SetIsValid;
       function FormataCurrency(AValue: Double; ADecimals: Integer = 2; bFormatoReal: Boolean = True): String;
       function FormataCPF(AValue: string): string;
@@ -214,6 +219,11 @@ type
 procedure Register;
 
 implementation
+
+const
+  TAMANHO_CNPJ_SEM_DV = 12;
+  VALOR_BASE = Ord('0'); // 48
+  PESOS_DV: array[0..12] of Integer = (6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2);
 
 { TMaskedEditPlus }
 
@@ -356,27 +366,91 @@ begin
   Result := Resto = StrToInt(Num[11]);
 end;
 
-function TMaskedEditPlus.IsValidCNPJ(ACNPJ: string): Boolean;
-const
-  Peso1: array[1..12] of Integer = (5,4,3,2,9,8,7,6,5,4,3,2);
-  Peso2: array[1..13] of Integer = (6,5,4,3,2,9,8,7,6,5,4,3,2);
+function TMaskedEditPlus.IsValidCNPJ(const ACNPJ: string): Boolean;
 var
-  i, Soma, Resto: Integer;
-  Num: string;
+  cnpjLimpo, dvInformado, dvCalculado: string;
 begin
-  if (ACNPJ.Trim = '') then ACNPJ := FEdit.Text;
-  Num := OnlyNumbers(ACNPJ);
-  if (Length(Num) <> 14) or (Num = StringOfChar(Num[1], 14)) then Exit(False);
-  Soma := 0;
-  for i := 1 to 12 do Soma := Soma + StrToInt(Num[i]) * Peso1[i];
-  Resto := Soma mod 11;
-  if Resto < 2 then Resto := 0 else Resto := 11 - Resto;
-  if Resto <> StrToInt(Num[13]) then Exit(False);
-  Soma := 0;
-  for i := 1 to 13 do Soma := Soma + StrToInt(Num[i]) * Peso2[i];
-  Resto := Soma mod 11;
-  if Resto < 2 then Resto := 0 else Resto := 11 - Resto;
-  Result := Resto = StrToInt(Num[14]);
+  Result := False;
+  cnpjLimpo := ACNPJ;
+  if (cnpjLimpo.Trim = '') then cnpjLimpo := FEdit.Text;
+  if Trim(cnpjLimpo) = '' then Exit;
+
+  cnpjLimpo := RemoveFormatacao_CNPJ(cnpjLimpo);
+  cnpjLimpo := RightStr('00000000000000' + cnpjLimpo, 14);
+  //cnpjLimpo := cnpjLimpo.ToUpper;
+
+  if IsCnpjFormacaoValidaComDV(cnpjLimpo) then begin
+    dvInformado := Copy(cnpjLimpo, TAMANHO_CNPJ_SEM_DV + 1, 2);
+    dvCalculado := CalculaDV_CNPJ(Copy(cnpjLimpo, 1, TAMANHO_CNPJ_SEM_DV));
+    Result := dvCalculado = dvInformado;
+  end;
+end;
+
+function TMaskedEditPlus.IsCnpjFormacaoValidaComDV(cnpj: string): boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  cnpj := RightStr('00000000000000' + cnpj, 14);
+
+  // Verifica se os 12 primeiros são alfanuméricos e os 2 últimos são dígitos
+  for i := 1 to 12 do
+    if not (cnpj[i] in ['0'..'9', 'A'..'Z']) then Exit;
+
+  for i := 13 to 14 do
+    if not (cnpj[i] in ['0'..'9']) then Exit;
+
+  // Verifica se não é todo zero
+  Result := cnpj <> '00000000000000';
+end;
+
+function TMaskedEditPlus.IsCnpjFormacaoValidaSemDV(cnpj: string): boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  cnpj := RightStr('00000000000000' + cnpj, 14);
+
+  // Verifica se todos os caracteres são dígito ou letra maiúscula
+  for i := 1 to 12 do
+    if not (cnpj[i] in ['0'..'9', 'A'..'Z']) then Exit;
+
+  // Verifica se não é todo zero
+  Result := cnpj <> '000000000000';
+end;
+
+function TMaskedEditPlus.CalculaDigito_CNPJ(const cnpj: string): Integer;
+var
+  i, soma, valorCaracter: Integer;
+begin
+  soma := 0;
+  for i := Length(cnpj) downto 1 do
+  begin
+    valorCaracter := Ord(cnpj[i]) - VALOR_BASE;
+    soma := soma + valorCaracter * PESOS_DV[High(PESOS_DV) - Length(cnpj) + i];
+  end;
+  if (soma mod 11) < 2 then
+    Result := 0
+  else
+    Result := 11 - (soma mod 11);
+end;
+
+function TMaskedEditPlus.CalculaDV_CNPJ(baseCnpj: string): string;
+var
+  baseLimpa, dv1, dv2: string;
+begin
+  if baseCnpj = '' then
+    raise Exception.Create('CNPJ não pode ser vazio para cálculo do DV');
+
+  baseLimpa := RemoveFormatacao_CNPJ(baseCnpj);
+
+  if not IsCnpjFormacaoValidaSemDV(baseLimpa) then
+    raise Exception.CreateFmt('Cnpj %s não é válido para o cálculo do DV', [baseCnpj]);
+
+  dv1 := IntToStr(CalculaDigito_CNPJ(baseLimpa));
+  dv2 := IntToStr(CalculaDigito_CNPJ(baseLimpa + dv1));
+
+  Result := dv1 + dv2;
 end;
 
 function TMaskedEditPlus.FormataCurrency(AValue: Double; ADecimals: Integer = 2; bFormatoReal: Boolean = True): String;
@@ -408,7 +482,7 @@ function TMaskedEditPlus.FormataCNPJ(AValue: string): string;
 var
   Raw: string;
 begin
-  Raw := OnlyNumbers(FEdit.Text);
+  Raw := RemoveFormatacao_CNPJ(FEdit.Text);
   if Length(Raw) > 14 then Delete(Raw, 15, MaxInt);
   if Length(Raw) >= 13 then
     Raw := Format('%s.%s.%s/%s-%s', [Copy(Raw,1,2), Copy(Raw,3,3), Copy(Raw,6,3), Copy(Raw,9,4), Copy(Raw,13,2)])
@@ -906,6 +980,12 @@ begin
 
   for c in v do
     if (c in ['0'..'9']) then Result := Result + c;
+end;
+
+function TMaskedEditPlus.RemoveFormatacao_CNPJ(cnpj: string): string;
+begin
+  Result := Trim(cnpj);
+  Result := ReplaceRegExpr('[./-]', Result, '', False);
 end;
 
 function TMaskedEditPlus.ReplaceStr(const S, Srch, Replace: string): string;
@@ -1587,10 +1667,16 @@ begin
   case FEditMode of
     emCurrency:
       CampoCurrency(Key, not FCurrencyPercent);
-    emCpf, emCnpj, emPhone, emDate, emCep, emTime:
+    emCpf, emPhone, emDate, emCep, emTime:
       begin
         If not (Key in ['0'..'9', #8]) Then Key := #0;
         if (Key <> #8) and (Length(OnlyNumbers(FEdit.Text)) >= FEdit.MaxLength) then Key := #0;
+      end;
+    emCnpj:
+      begin
+        If not (Key in ['0'..'9', 'A'..'Z', 'a'..'z', #8]) Then Key := #0;
+        Key := UpCase(Key);
+        if (Key <> #8) and (Length(RemoveFormatacao_CNPJ(FEdit.Text)) >= FEdit.MaxLength) then Key := #0;
       end;
   end;
 

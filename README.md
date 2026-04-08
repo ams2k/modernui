@@ -13,7 +13,7 @@ Components Packages for Lazarus / FreePascal
 - EditExtPackage: Edit padrão do Topazzio.
 - EditPlusPackage: Edit com Imagem.
 - LabelPlusPackage: Label com ícone, bordas e gradiente.
-- MaskedEditPlusPackage: Edit com máscaras (cpf, cnpj, telefone, cep, data) e valores monetários.
+- MaskedEditPlusPackage: Edit com máscaras (cpf, cnpj, telefone, cep, data) e valores monetários. Pronto para o novo CNPJ.
 - PanelPlusPackage: Painel diferentes tipos de bordas e gradiente.
 - SplitViewPackage: Componente para criar menu lateral retrátil.
 - SplitViewButtonPackage: Botão específico para o SplitViewPackage.
