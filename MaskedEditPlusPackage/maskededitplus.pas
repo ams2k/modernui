@@ -149,7 +149,7 @@ type
       destructor Destroy; override;
       property DateValue: TDate read GetDateValue write SetDateValue;
       procedure Clear;
-      function IsValidCPF(ACPF: string = ''): Boolean;
+      function IsValidCPF(const ACPF: string): Boolean;
       function IsValidCNPJ(const ACNPJ: string): Boolean;
       property IsValid: Boolean read FIsValid write SetIsValid;
       function FormataCurrency(AValue: Double; ADecimals: Integer = 2; bFormatoReal: Boolean = True): String;
@@ -346,24 +346,41 @@ begin
   inherited Destroy;
 end;
 
-function TMaskedEditPlus.IsValidCPF(ACPF: string): Boolean;
+function TMaskedEditPlus.IsValidCPF(const ACPF: string): Boolean;
 var
-  i, Soma, Resto: Integer;
-  Num: string;
+  s: string;
+  i, soma, dig1, dig2: Integer;
 begin
-  if (ACPF.Trim = '') then ACPF := FEdit.Text;
-  Num := OnlyNumbers(ACPF);
-  if (Length(Num) <> 11) or (Num = StringOfChar(Num[1], 11)) then Exit(False);
-  Soma := 0;
-  for i := 1 to 9 do Soma := Soma + StrToInt(Num[i]) * (11 - i);
-  Resto := (Soma * 10) mod 11;
-  if Resto = 10 then Resto := 0;
-  if Resto <> StrToInt(Num[10]) then Exit(False);
-  Soma := 0;
-  for i := 1 to 10 do Soma := Soma + StrToInt(Num[i]) * (12 - i);
-  Resto := (Soma * 10) mod 11;
-  if Resto = 10 then Resto := 0;
-  Result := Resto = StrToInt(Num[11]);
+  s := ACPF.Trim;
+  if (s = '') then s := FEdit.Text;
+  s := OnlyNumbers(s);
+  s := RightStr('00000000000' + s, 11);
+
+  // Rejeita CPFs com todos os dígitos iguais
+  if (s = '00000000000') or (s = '11111111111') or (s = '22222222222') or
+     (s = '33333333333') or (s = '44444444444') or (s = '55555555555') or
+     (s = '66666666666') or (s = '77777777777') or (s = '88888888888') or
+     (s = '99999999999') then Exit;
+
+  // Calcula primeiro dígito verificador
+  soma := 0;
+  for i := 1 to 9 do
+    soma := soma + (Ord(s[i]) - Ord('0')) * (10 - i + 1);
+
+  dig1 := 11 - (soma mod 11);
+  if dig1 >= 10 then dig1 := 0;
+
+  // Calcula segundo dígito verificador
+  soma := 0;
+  for i := 1 to 9 do
+    soma := soma + (Ord(s[i]) - Ord('0')) * (11 - i + 1);
+  soma := soma + dig1 * 2;
+
+  dig2 := 11 - (soma mod 11);
+  if dig2 >= 10 then dig2 := 0;
+
+  // Compara com os dígitos informados
+  Result := (dig1 = Ord(s[10]) - Ord('0')) and (dig2 = Ord(s[11]) - Ord('0'));
 end;
 
 function TMaskedEditPlus.IsValidCNPJ(const ACNPJ: string): Boolean;
@@ -377,7 +394,6 @@ begin
 
   cnpjLimpo := RemoveFormatacao_CNPJ(cnpjLimpo);
   cnpjLimpo := RightStr('00000000000000' + cnpjLimpo, 14);
-  //cnpjLimpo := cnpjLimpo.ToUpper;
 
   if IsCnpjFormacaoValidaComDV(cnpjLimpo) then begin
     dvInformado := Copy(cnpjLimpo, TAMANHO_CNPJ_SEM_DV + 1, 2);
