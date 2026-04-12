@@ -604,10 +604,12 @@ function TMaskedEditPlus.TextUnformatted: string;
 //remove a formatação do Text
 begin
   case FEditMode of
-    emCpf, emCnpj, emCep, emPhone:
+    emCpf, emCep, emPhone:
       Result := OnlyNumbers(FEdit.Text);
     emCurrency:
       Result := RemoveFormatacaoCurrency(FEdit.Text);
+    emCnpj:
+      Result := RemoveFormatacao_CNPJ(FEdit.Text);
   else
     Result := FEdit.Text;
   end;
