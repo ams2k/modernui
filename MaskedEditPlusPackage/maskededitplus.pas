@@ -23,6 +23,7 @@ type
     FSpyButton: TPanel;
 
     private
+      FAlternateCPFCNPJ: Boolean;
       FBorderBottom: Boolean;
       FCharCase: TEditCharCase;
       FCurrencyPercent: Boolean;
@@ -75,6 +76,7 @@ type
       function IsCnpjFormacaoValidaComDV(cnpj: string): boolean;
       function IsCnpjFormacaoValidaSemDV(cnpj: string): boolean;
       function RemoveFormatacao_CNPJ(cnpj: string): string;
+      function HasChars(const S: String): Boolean;
       procedure Saindo;
       function GetAlignment: TAlignment;
       function GetCurrencyValue: Double;
@@ -165,6 +167,8 @@ type
       function TextUnformatted: string;
       { Retorna a parte inteira e positiva do Text }
       function TextToInteger: Int64;
+      { Retorna o conteúdo do Text sem acentuação }
+      function RemoveAccents(S: string = ''): string;
     published
       property Align;
       property Alignment: TAlignment read GetAlignment write SetAlignment;
@@ -214,11 +218,15 @@ type
       property Placeholder: string read FPlaceholder write SetPlaceholder;
       property Text: string read GetText write SetText;
       property FocusedColor: TColor read FFocusColorText write SetFocusedColor default clGray;
+      property AlternateCPFCNPJ: Boolean read FAlternateCPFCNPJ write FAlternateCPFCNPJ default False;
   end;
 
 procedure Register;
 
 implementation
+
+uses
+  unicodedata;
 
 const
   TAMANHO_CNPJ_SEM_DV = 12;
@@ -481,6 +489,7 @@ function TMaskedEditPlus.FormataCPF(AValue: string): string;
 var
   Raw: string;
 begin
+  if AValue = '' then AValue := FEdit.Text;
   Raw := OnlyNumbers(AValue);
   if Length(Raw) > 11 then Delete(Raw, 12, MaxInt);
   if Length(Raw) >= 10 then
@@ -498,7 +507,8 @@ function TMaskedEditPlus.FormataCNPJ(AValue: string): string;
 var
   Raw: string;
 begin
-  Raw := RemoveFormatacao_CNPJ(FEdit.Text);
+  if AValue = '' then AValue := FEdit.Text;
+  Raw := RemoveFormatacao_CNPJ(AValue);
   if Length(Raw) > 14 then Delete(Raw, 15, MaxInt);
   if Length(Raw) >= 13 then
     Raw := Format('%s.%s.%s/%s-%s', [Copy(Raw,1,2), Copy(Raw,3,3), Copy(Raw,6,3), Copy(Raw,9,4), Copy(Raw,13,2)])
@@ -517,7 +527,8 @@ function TMaskedEditPlus.FormataCEP(AValue: string): string;
 var
   Raw: string;
 begin
-  Raw := OnlyNumbers(FEdit.Text);
+  if AValue = '' then AValue := FEdit.Text;
+  Raw := OnlyNumbers(AValue);
   if Length(Raw) > 8 then Delete(Raw, 9, MaxInt);
   if Length(Raw) >= 6 then
     Raw := Format('%s-%s', [Copy(Raw,1,5), Copy(Raw,6,3)]);
@@ -530,6 +541,7 @@ function TMaskedEditPlus.FormataData(AValue: string; ADateFmt: TMaskedEditDateFm
 var
   Raw: string;
 begin
+  if AValue = '' then AValue := FEdit.Text;
   Raw := OnlyNumbers(AValue);
   case ADateFmt of
     edDMY: { dd/mm/yyyy }
@@ -569,7 +581,8 @@ function TMaskedEditPlus.FormataTelefone(AValue: string): string;
 var
   Raw: string;
 begin
-  Raw := OnlyNumbers(FEdit.Text);
+  if AValue = '' then AValue := FEdit.Text;
+  Raw := OnlyNumbers(AValue);
   if Length(Raw) > 11 then Delete(Raw, 12, MaxInt);
   if Length(Raw) = 11 then
     Raw := Format('(%s) %s-%s', [Copy(Raw,1,2), Copy(Raw,3,5), Copy(Raw,8,4)])
@@ -588,7 +601,8 @@ function TMaskedEditPlus.FormataTime(AValue: string): string;
 var
   Raw: string;
 begin
-  Raw := OnlyNumbers(FEdit.Text);
+  if AValue = '' then AValue := FEdit.Text;
+  Raw := OnlyNumbers(AValue);
   if Length(Raw) > 6 then Delete(Raw, 7, MaxInt);
   if Length(Raw) >= 5 then
     Raw := Format('%s:%s:%s', [Copy(Raw,1,2), Copy(Raw,3,2), Copy(Raw,5,2)])
@@ -633,6 +647,28 @@ begin
       end;
     else
       Result := StrToInt64Def( OnlyNumbers(), 0);
+  end;
+end;
+
+function TMaskedEditPlus.RemoveAccents(S: string): string;
+// remove acento das letras
+// S := StringReplace(S, 'ä', 'a', [rfReplaceAll]);
+var
+  i: Integer;
+  Temp: UnicodeString;
+begin
+  Result := '';
+  if Trim(S) = '' then S := FEdit.Text;
+  // Converte para UnicodeString para tratar corretamente os acentos
+  Temp := UnicodeString(S);
+
+  // Normaliza para NFD e remove os acentos (combining marks)
+  Temp := NormalizeNFD(Temp);
+
+  for i := 1 to Length(Temp) do begin
+    // Remove caracteres de marcação (categoria Mn - Nonspacing Mark)
+    if (Ord(Temp[i]) < 768) or (Ord(Temp[i]) > 879) then  // Range aproximado de combining diacritical marks
+      Result := Result + string(Temp[i]);
   end;
 end;
 
@@ -697,7 +733,10 @@ end;
 
 function TMaskedEditPlus.GetText: string;
 begin
-  Result := FEdit.Text;
+  if Assigned(FEdit) then
+    Result := FEdit.Text
+  else
+    Result := '';
 end;
 
 procedure TMaskedEditPlus.SetAlignment(AValue: TAlignment);
@@ -998,6 +1037,17 @@ begin
 
   for c in v do
     if (c in ['0'..'9']) then Result := Result + c;
+end;
+
+function TMaskedEditPlus.HasChars(const S: String): Boolean;
+var
+  c: Char;
+  v: string;
+begin
+  Result := False;
+  v := S;
+  for c in v do
+    if (c in ['a'..'z', 'A'..'Z']) then Exit(True);
 end;
 
 function TMaskedEditPlus.RemoveFormatacao_CNPJ(cnpj: string): string;
@@ -1685,16 +1735,50 @@ begin
   case FEditMode of
     emCurrency:
       CampoCurrency(Key, not FCurrencyPercent);
-    emCpf, emPhone, emDate, emCep, emTime:
+    emPhone, emDate, emCep, emTime:
       begin
         If not (Key in ['0'..'9', #8]) Then Key := #0;
         if (Key <> #8) and (Length(OnlyNumbers(FEdit.Text)) >= FEdit.MaxLength) then Key := #0;
       end;
-    emCnpj:
+    emCpf, emCnpj:
       begin
         If not (Key in ['0'..'9', 'A'..'Z', 'a'..'z', #8]) Then Key := #0;
-        Key := UpCase(Key);
-        if (Key <> #8) and (Length(RemoveFormatacao_CNPJ(FEdit.Text)) >= FEdit.MaxLength) then Key := #0;
+
+        if FAlternateCPFCNPJ then
+        begin
+          if (FEditMode = emCpf) and (Key in ['a'..'z', 'A'..'Z']) then
+          begin
+            FEditMode := emCnpj;
+            SetMaxLength(18);
+          end
+          else
+          begin
+            if (FEditMode = emCpf) and (Length(FEdit.Text) + 1 > 14) then
+            begin
+              FEditMode := emCnpj;
+              SetMaxLength(18);
+            end
+            else if (FEditMode = emCnpj) and (Length(FEdit.Text) < 15) then
+            begin
+              if not (Key in ['a'..'z', 'A'..'Z']) and (not HasChars(FEdit.Text)) then begin
+                FEditMode := emCpf;
+                SetMaxLength(14);
+              end;
+            end;
+          end;
+        end;
+
+        if FEditMode = emCpf then
+        begin
+          if (Key <> #8) and (Length(OnlyNumbers(FEdit.Text)) >= FEdit.MaxLength) then
+            Key := #0;
+        end
+        else
+        begin
+          Key := UpCase(Key);
+          if (Key <> #8) and (Length(RemoveFormatacao_CNPJ(FEdit.Text)) >= FEdit.MaxLength) then
+            Key := #0;
+        end;
       end;
   end;
 

@@ -1,13 +1,11 @@
 unit Util.Criptografia;
 
-// Aldo Marcio Soares - ams2kg@gmail.com - 05/2025
-
 {$mode ObjFPC}{$H+}
 
 interface
 
 uses
-  Classes, SysUtils, base64, BlowFish;
+  Classes, SysUtils, base64, BlowFish, md5;
 
 // Pode ser necessário instalar a biblioteca DCPcrypt (tem no online package)
 
@@ -24,6 +22,8 @@ type
       function Decrypt(AValueToDecrypt: String): string;
       function Encrypt64(AValueToEncrypt: string): string;
       function Decrypt64(AValueToDecrypt: String): string;
+      function Encrypt_MD5(const AValue: string): string;
+      class function new: TCriptografa;
   end;
 
 implementation
@@ -34,6 +34,11 @@ constructor TCriptografa.Create(ASecretKey: string);
 begin
   if Trim(ASecretKey) <> '' then
     FKey := ASecretKey;
+end;
+
+class function TCriptografa.new: TCriptografa;
+begin
+  Result := TCriptografa.Create();
 end;
 
 function TCriptografa.Encrypt(AValueToEncrypt: string): string;
@@ -79,6 +84,12 @@ function TCriptografa.Decrypt64(AValueToDecrypt: String): string;
 //descriptografa uma string criptografada em base64
 begin
   Result := DecodeStringBase64( AValueToDecrypt );
+end;
+
+function TCriptografa.Encrypt_MD5(const AValue: string): string;
+// criptografa a senha usando MD5
+begin
+  Result := MD5Print(MD5String(AValue));
 end;
 
 end.
