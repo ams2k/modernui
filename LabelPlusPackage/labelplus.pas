@@ -6,7 +6,7 @@ interface
 
 uses
    Classes, SysUtils, Graphics, LCLType, LCLIntf, Controls, Types, LMessages,
-   LResources, ExtCtrls, StdCtrls, ImgList, Math;
+   LResources, ExtCtrls, StdCtrls, ImgList, ActnList, Math;
 
 type
   { TLabelPlus }
@@ -29,6 +29,12 @@ type
     FGradient: Boolean;
     FGradientColorOne: TColor;
     FGradientColorTwo: TColor;
+    FText3D: Boolean;
+    FText3DColorFront: TColor;
+    FText3DColorBack: TColor;
+    FText3DDX: Integer;
+    FText3DDY: Integer;
+    FText3DOutlined: Boolean;
 
     procedure SetBorderBottom(AValue: Boolean);
     procedure SetBorderColor(AValue: TColor);
@@ -45,12 +51,21 @@ type
     procedure SetIconVisible(AValue: Boolean);
     procedure SetIcon(AValue: TPicture);
     function BorderCounter(): Integer;
+    procedure SetText3D(AValue: Boolean);
+    procedure SetText3DColorFront(AValue: TColor);
+    procedure SetText3DColorBack(AValue: TColor);
+    procedure SetText3DDX(AValue: Integer);
+    procedure SetText3DDY(AValue: Integer);
+    procedure SetText3DOutlined(AValue: Boolean);
   protected
+    procedure ActionChange(Sender: TObject; CheckDefaults: Boolean); override;
     procedure Paint; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
+    property Action;
+    property Caption;
     property Images: TCustomImageList read FImages write FImages;
     property ImageIndex: Integer read FImageIndex write FImageIndex default -1;
     property Icon: TPicture read FIcon write SetIcon;
@@ -67,6 +82,12 @@ type
     property ShowGradient: Boolean read FGradient write SetGradient default False;
     property ShowGradientColorOne: TColor read FGradientColorOne write SetGradientColorOne;
     property ShowGradientColorTwo: TColor read FGradientColorTwo write SetGradientColorTwo;
+    property Text3D: Boolean read FText3D write SetText3D default False;
+    property Text3DColorFront: TColor read FText3DColorFront write SetText3DColorFront default clWhite;
+    property Text3DColorBack: TColor read FText3DColorBack write SetText3DColorBack default clSilver;
+    property Text3DDX: Integer read FText3DDX write SetText3DDX default 1;
+    property Text3DDY: Integer read FText3DDY write SetText3DDY default 1;
+    property Text3DOutlined: Boolean read FText3DOutlined write SetText3DOutlined default False;
   end;
 
 procedure Register;
@@ -107,6 +128,12 @@ begin
   FGradient := False;
   FGradientColorOne := RGBToColor(45, 140, 206);
   FGradientColorTwo := RGBToColor(177, 213, 238);
+
+  FText3D := False;
+  FText3DColorFront := clWhite;
+  FText3DColorBack  := clSilver;
+  FText3DDX := 1;
+  FText3DDY := 1;
 end;
 
 destructor TLabelPlus.Destroy;
@@ -230,6 +257,72 @@ begin
   if FBorderLeft then Result := Result + 1;
 end;
 
+procedure TLabelPlus.SetText3D(AValue: Boolean);
+begin
+  if FText3D = AValue then Exit;
+  FText3D := AValue;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetText3DColorFront(AValue: TColor);
+begin
+  if FText3DColorFront = AValue then Exit;
+  FText3DColorFront := AValue;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetText3DColorBack(AValue: TColor);
+begin
+  if FText3DColorBack = AValue then Exit;
+  FText3DColorBack := AValue;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetText3DDX(AValue: Integer);
+begin
+  if FText3DDX = AValue then Exit;
+  if AValue< -3 then AValue := -3;
+  if AValue> 3 then AValue := 3;
+  FText3DDX := AValue;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetText3DDY(AValue: Integer);
+begin
+  if FText3DDY = AValue then Exit;
+  if AValue< -3 then AValue := -3;
+  if AValue> 3 then AValue := 3;
+  FText3DDY := AValue;
+  Invalidate;
+end;
+
+procedure TLabelPlus.SetText3DOutlined(AValue: Boolean);
+begin
+  if FText3DOutlined = AValue then Exit;
+  FText3DOutlined := AValue;
+  Invalidate;
+end;
+
+procedure TLabelPlus.ActionChange(Sender: TObject; CheckDefaults: Boolean);
+begin
+  inherited ActionChange(Sender, CheckDefaults);
+
+  if Sender is TCustomAction then
+  begin
+    //if CheckDefaults or (Caption = '') then
+    Caption := TCustomAction(Sender).Caption;
+
+    //if CheckDefaults or (FImageIndex = -1) then
+    FImageIndex := TCustomAction(Sender).ImageIndex;
+
+    Hint := TCustomAction(Sender).Hint;
+    Enabled := TCustomAction(Sender).Enabled;
+    Visible := TCustomAction(Sender).Visible;
+
+    Invalidate;
+  end;
+end;
+
 procedure TLabelPlus.Paint;
 var
   R: TRect;
@@ -341,7 +434,34 @@ begin
 
   // Texto
   Canvas.Brush.Style := bsClear;
-  Canvas.TextOut(ContentLeft + IconSpace, TextTop, Caption);
+
+  if FText3D then begin
+
+    if FText3DOutlined then begin
+      ContentLeft := ContentLeft + IconSpace;
+      //texto de fundo
+      Canvas.Font.Color := Text3DColorBack;
+      Canvas.TextOut(ContentLeft, TextTop, Caption);
+      Canvas.TextOut(ContentLeft + 1, TextTop, Caption);
+      Canvas.TextOut(ContentLeft + 2, TextTop, Caption);
+
+      Canvas.TextOut(ContentLeft, TextTop +  1, Caption);
+      Canvas.TextOut(ContentLeft + 1, TextTop + 2, Caption);
+
+      //texto de frente
+      Canvas.Font.Color := Text3DColorFront;
+      Canvas.TextOut(ContentLeft + 1, TextTop + 1, Caption);
+    end else begin
+      //texto de fundo
+      Canvas.Font.Color := Text3DColorBack;
+      Canvas.TextOut(ContentLeft + IconSpace + Text3DDX, TextTop + Text3DDY, Caption);
+
+      //texto de frente
+      Canvas.Font.Color := Text3DColorFront;
+      Canvas.TextOut(ContentLeft + IconSpace, TextTop, Caption);
+    end;
+  end else
+    Canvas.TextOut(ContentLeft + IconSpace, TextTop, Caption);
 end;
 
 end.

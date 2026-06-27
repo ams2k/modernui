@@ -8,14 +8,12 @@ interface
 
 uses
   Classes, SysUtils, Controls, Graphics, ImgList, LResources, LCLType, LCLIntf,
-  LMessages, Forms;
+  LMessages, Forms, ActnList;
 
 type
-
   TImagePosition = (ipLeft, ipRight, ipTop, ipBottom, ipCenter);
 
   { TButtonRetro }
-
 
     TButtonRetro = class(TCustomControl)
     private
@@ -36,6 +34,8 @@ type
       procedure SetFlatStyle(AValue: Boolean);
       procedure SetImagePosition(AValue: TImagePosition);
     protected
+      procedure ActionChange(Sender: TObject; CheckDefaults: Boolean); override;
+      procedure Click; override;
       procedure Paint; override;
       procedure MouseEnter; override;
       procedure MouseLeave; override;
@@ -48,6 +48,7 @@ type
     public
       constructor Create(AOwner: TComponent); override;
     published
+      property Action;
       property Align;
       property Anchors;
       property Caption;
@@ -152,6 +153,29 @@ begin
   end;
 end;
 
+procedure TButtonRetro.ActionChange(Sender: TObject; CheckDefaults: Boolean);
+begin
+  inherited ActionChange(Sender, CheckDefaults);
+
+  if Sender is TCustomAction then
+  begin
+    Caption := TCustomAction(Sender).Caption;
+    FImageIndex := TCustomAction(Sender).ImageIndex;
+    Hint := TCustomAction(Sender).Hint;
+    Enabled := TCustomAction(Sender).Enabled;
+    Visible := TCustomAction(Sender).Visible;
+
+    Invalidate;
+  end;
+end;
+
+procedure TButtonRetro.Click;
+begin
+  FMouseDown := False;
+  Invalidate;
+  inherited Click;
+end;
+
 procedure TButtonRetro.MouseEnter;
 begin
   inherited MouseEnter;
@@ -181,7 +205,6 @@ begin
   if Button = mbLeft then begin
     FMouseDown := False;
     Invalidate;
-    Click;
   end;
 end;
 

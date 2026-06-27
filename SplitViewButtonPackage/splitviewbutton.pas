@@ -7,7 +7,7 @@ interface
 
 uses
   Classes, SysUtils, Graphics, LCLType, LCLIntf, Controls, Types, LMessages,
-  LResources, ExtCtrls, StdCtrls, ImgList, Math;
+  LResources, ExtCtrls, StdCtrls, ImgList, ActnList, Math;
 
 type
 
@@ -43,6 +43,7 @@ type
     procedure SetUseGradient(AValue: Boolean);
     function LightenColor(AColor: TColor; Percent: Integer): TColor;
   protected
+    procedure ActionChange(Sender: TObject; CheckDefaults: Boolean); override;
     procedure Paint; override;
     procedure MouseEnter; override;
     procedure MouseLeave; override;
@@ -53,6 +54,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
+    property Action;
     property Align;
     property Anchors;
     property BorderStyle;
@@ -201,6 +203,22 @@ begin
   B := Round(B + (255 - B) * (Percent / 100));
 
   Result := RGBToColor(R, G, B);
+end;
+
+procedure TSplitViewButton.ActionChange(Sender: TObject; CheckDefaults: Boolean);
+begin
+  inherited ActionChange(Sender, CheckDefaults);
+
+  if Sender is TCustomAction then
+  begin
+    FCaption := TCustomAction(Sender).Caption;
+    FImageIndex := TCustomAction(Sender).ImageIndex;
+    Hint := TCustomAction(Sender).Hint;
+    Enabled := TCustomAction(Sender).Enabled;
+    Visible := TCustomAction(Sender).Visible;
+
+    Invalidate;
+  end;
 end;
 
 procedure TSplitViewButton.MouseEnter;
