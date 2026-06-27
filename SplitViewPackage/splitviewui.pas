@@ -71,6 +71,7 @@ type
     procedure Resize; override;
     procedure Paint; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure SetParent(NewParent: TWinControl); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -140,7 +141,7 @@ end;
 constructor TSplitViewUI.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  Align := alLeft;
+
   Alignment := taLeftJustify;
   Color := $2E2E2E;
   BorderStyle := bsNone;
@@ -174,7 +175,7 @@ begin
   FContainer.Align := alClient;
   FContainer.AutoScroll := True;
   FContainer.BorderStyle := bsNone;
-  FContainer.Caption := Self.Name;
+  //FContainer.Caption := Self.Name;
   FContainer.Color := Color;
   FContainer.Name := 'SplitViewUI';
 
@@ -234,6 +235,27 @@ begin
       end;
     end;
   end;
+end;
+
+procedure TSplitViewUI.SetParent(NewParent: TWinControl);
+begin
+  inherited SetParent(NewParent);
+
+  if NewParent is TSplitViewUI then
+  begin
+    case TSplitViewUI(NewParent).Orientation of
+      svoVertical:
+      begin
+        Align := alTop;
+        AnimationDirection := sadVertical;
+        ToggleMenuText := 'Menu Group';
+      end;
+      svoHorizontal:
+        Align := alLeft;
+    end;
+  end
+  else
+    Align := alLeft;
 end;
 
 procedure TSplitViewUI.Resize;
