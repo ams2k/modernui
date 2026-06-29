@@ -10,7 +10,6 @@ uses
   LResources, ExtCtrls, StdCtrls, ImgList, ActnList, Math;
 
 type
-
   { TSplitViewButton }
 
   TSplitViewButton = class(TCustomControl)
@@ -18,7 +17,6 @@ type
     FClickTimer: TTimer;
     FAlignment: TAlignment;
     FBorderColor: TColor;
-    FCaption: String;
     FHover: Boolean;
     FHoverColor: TColor;
     FImageIndex: Integer;
@@ -33,7 +31,6 @@ type
     procedure AnimateClick(Sender: TObject);
     procedure SetAlignment(AValue: TAlignment);
     procedure SetBorderColor(AValue: TColor);
-    procedure SetCaption(AValue: String);
     procedure SetHoverColor(AValue: TColor);
     procedure SetImageIndex(AValue: Integer);
     procedure SetImageLeftStart(AValue: Integer);
@@ -57,6 +54,7 @@ type
     property Action;
     property Align;
     property Anchors;
+    property Caption;
     property BorderStyle;
     property BorderWidth;
     property Color;
@@ -80,7 +78,6 @@ type
 
     property Alignment: TAlignment read FAlignment write SetAlignment default taCenter;
     property BorderColor: TColor read FBorderColor write SetBorderColor default clGray;
-    property Caption: String read FCaption write SetCaption;
     property HoverColor: TColor read FHoverColor write SetHoverColor;
     property Images: TCustomImageList read FImages write FImages;
     property ImageIndex: Integer read FImageIndex write SetImageIndex default -1;
@@ -116,7 +113,6 @@ begin
   TabStop := True;
 
   FBorderColor := $2E2E2E;
-  FCaption := 'SplitViewButton';
   FImageIndex := -1;
   FImageLeftStart := 4;
   FHover := False;
@@ -211,7 +207,7 @@ begin
 
   if Sender is TCustomAction then
   begin
-    FCaption := TCustomAction(Sender).Caption;
+    Caption := TCustomAction(Sender).Caption;
     FImageIndex := TCustomAction(Sender).ImageIndex;
     Hint := TCustomAction(Sender).Hint;
     Enabled := TCustomAction(Sender).Enabled;
@@ -279,13 +275,6 @@ begin
   Invalidate;
 end;
 
-procedure TSplitViewButton.SetCaption(AValue: String);
-begin
-  if FCaption = AValue then Exit;
-  FCaption := AValue;
-  Invalidate;
-end;
-
 procedure TSplitViewButton.Paint;
 var
   R: TRect;
@@ -349,7 +338,7 @@ begin
   IconSpace := IfThen(bIconVisible, IconW + 4, 0); // espaço reservado para ícone
 
   // Texto
-  TextSize := Canvas.TextExtent(FCaption);
+  TextSize := Canvas.TextExtent(Caption);
   TotalHeight := Max(TextSize.cy, IconH);
 
   // Alinhamento horizontal
@@ -377,9 +366,9 @@ begin
   end;
 
   // Texto
-  if (FCaption <> '') then begin
+  if (Caption <> '') then begin
     Canvas.Brush.Style := bsClear;
-    Canvas.TextOut(ContentLeft + IconSpace + FSpacing, TextTop, FCaption);
+    Canvas.TextOut(ContentLeft + IconSpace + FSpacing, TextTop, Caption);
   end;
 
   // seta à direita

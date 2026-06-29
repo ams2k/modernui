@@ -19,10 +19,9 @@ type
 
   { TSplitViewUI }
 
-  TSplitViewUI = class(TCustomPanel)
+  TSplitViewUI = class(TScrollBox)
   private
     FAnimationTimer: TTimer;
-    FContainer: TScrollBox;
     FImageIndex: Integer;
     FImageLeftStart: Integer;
     FImages: TCustomImageList;
@@ -41,6 +40,7 @@ type
     FCompactSize: Integer;
     FOpened: Boolean;
     FOpenedSize: Integer;
+    FClickedToggle: Boolean;
 
     FAnimationDuration: Integer;
     FShowToggle: Boolean;
@@ -68,6 +68,7 @@ type
     procedure ToggleClick(Sender: TObject);
     function LightenColor(AColor: TColor; Percent: Integer): TColor;
   protected
+    procedure Click; override;
     procedure Resize; override;
     procedure Paint; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -75,7 +76,6 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    property ContentPanel: TScrollBox read FContainer;
     procedure CloseAllChildSplitViews;
     procedure Toggle;
   published
@@ -100,8 +100,8 @@ type
     property ToggleMenuColor: TColor read FToggleColor write SetToggleColor default clBlack;
 
     property Align;
-    property Alignment;
     property Anchors;
+    property AutoScroll default True;
     property BorderStyle;
     property Caption;
     property Color;
@@ -142,7 +142,6 @@ constructor TSplitViewUI.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
 
-  Alignment := taLeftJustify;
   Color := $2E2E2E;
   BorderStyle := bsNone;
   Font.Color := clWhite;
@@ -169,16 +168,6 @@ begin
   FAnimationTimer.Interval := 15;
   FAnimationTimer.OnTimer := @AnimateStep;
 
-  // container para organizar os filhos
-  FContainer := TScrollBox.Create(Self);
-  FContainer.Parent := Self;
-  FContainer.Align := alClient;
-  FContainer.AutoScroll := True;
-  FContainer.BorderStyle := bsNone;
-  //FContainer.Caption := Self.Name;
-  FContainer.Color := Color;
-  FContainer.Name := 'SplitViewUI';
-
   // botão de toggle
   FToggle := TCustomControl.Create(Self);
   FToggle.Parent := Self;
@@ -195,6 +184,7 @@ begin
   FToggle.ShowHint := True;
   FToggle.Width := 40;
 
+  FClickedToggle := False;
   SetPlacement(FPlacement);
 end;
 
@@ -218,26 +208,13 @@ begin
 end;
 
 procedure TSplitViewUI.Notification(AComponent: TComponent; Operation: TOperation);
-// garantir que qualquer controle que não seja o próprio ContentPanel
-// ou o botão vá para dentro do ContentPanel
 begin
   inherited Notification(AComponent, Operation);
-
-  // só funciona EM TEMPO DE EXECUÇÃO
-  if not (csDesigning in ComponentState) then begin
-    if (Operation = opInsert) and (AComponent is TControl) then begin
-      if Assigned(FContainer) and
-         (AComponent <> FContainer) and
-         (AComponent <> FToggle) and
-         (TControl(AComponent).Parent = Self) then
-      begin
-        TControl(AComponent).Parent := FContainer;
-      end;
-    end;
-  end;
 end;
 
 procedure TSplitViewUI.SetParent(NewParent: TWinControl);
+// se o parent for um TSplitViewUI, altera para Menu de agrupamento,
+// ou seja, um TSplitViewUI dentro de outro
 begin
   inherited SetParent(NewParent);
 
@@ -249,13 +226,14 @@ begin
         Align := alTop;
         AnimationDirection := sadVertical;
         ToggleMenuText := 'Menu Group';
+        AutoScroll := False;
       end;
       svoHorizontal:
         Align := alLeft;
     end;
   end
   else
-    Align := alLeft;
+    Align := alLeft; // o parent é outro componente
 end;
 
 procedure TSplitViewUI.Resize;
@@ -268,8 +246,6 @@ procedure TSplitViewUI.SetColor(AValue: TColor);
 //define a cor de fundo do SplitView
 begin
   inherited SetColor(AValue);
-  if Assigned(FContainer) then
-    FContainer.Color := AValue;
 end;
 
 procedure TSplitViewUI.CloseAllChildSplitViews;
@@ -348,23 +324,9 @@ begin
 end;
 
 procedure TSplitViewUI.SetOrientation(AValue: TSplitViewOrientation);
-// permitir ajustar o alinhamento dos controles filhos dentro do ContentPanel,
-// ou seja, o que estiver “dentro” do SplitView.
-var
-  i: Integer;
 begin
-  if FOrientation <> AValue then begin
-    FOrientation := AValue;
-
-    for i := 0 to FContainer.ControlCount - 1 do begin
-      if AValue = svoVertical then
-        FContainer.Controls[i].Align := alTop
-      else
-        FContainer.Controls[i].Align := alLeft;
-    end;
-
-    FContainer.Invalidate;
-  end;
+  if FOrientation = AValue then Exit;
+  FOrientation := AValue;
 end;
 
 procedure TSplitViewUI.SetShowToggle(AValue: Boolean);
@@ -539,6 +501,8 @@ end;
 procedure TSplitViewUI.ToggleClick(Sender: TObject);
 begin
   Toggle;
+  FClickedToggle := True;
+  Click;
 end;
 
 function TSplitViewUI.LightenColor(AColor: TColor; Percent: Integer): TColor;
@@ -555,6 +519,13 @@ begin
   B := Round(B + (255 - B) * (Percent / 100));
 
   Result := RGBToColor(R, G, B);
+end;
+
+procedure TSplitViewUI.Click;
+begin
+  if not FClickedToggle then Exit;
+  FClickedToggle := False;;
+  inherited Click;
 end;
 
 procedure TSplitViewUI.DrawToggle(Sender: TObject);
@@ -605,12 +576,7 @@ begin
   TextSize := c.Canvas.TextExtent(FToggleCaption);
   TotalHeight := Max(TextSize.cy, IconH);
 
-  // Alinhamento horizontal
-  case Alignment of
-    taLeftJustify: ContentLeft := 2 + FImageLeftStart; //distanciamento da esquerda ;
-    taCenter: ContentLeft := (c.Width - (TextSize.cx + IconSpace)) div 2;
-    taRightJustify: ContentLeft := c.Width - (TextSize.cx + IconSpace);
-  end;
+  ContentLeft := 2 + FImageLeftStart; //distanciamento da esquerda ;
 
   // Alinhamento vertical
   TextTop := (c.Height - TotalHeight) div 2 + 1;
