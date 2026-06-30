@@ -84,10 +84,10 @@ begin
   FExecutando           := False;
   FUpdatingSize         := False;
   FActive               := True;
-  FWidth                := 292;
-  FHeight               := 172;
-  Width                 := FWidth;
-  Height                := FHeight;
+  Width                 := 292;
+  Height                := 172;
+  FWidth                := Width;
+  FHeight               := Height;
   F_MaxX                := Width;
   F_MaxY                := Height;
 
@@ -108,7 +108,7 @@ begin
   TimerMarquee.OnTimer  := @TimerMarqueeTick;
 
   TimerResize           := TTimer.Create(Self);
-  TimerResize.Enabled   := True;
+  TimerResize.Enabled   := False;
   TimerResize.Interval  := 10;
   TimerResize.OnTimer   := @TimerResizeTick;
 
@@ -117,6 +117,8 @@ end;
 
 destructor TChasePanel.Destroy;
 begin
+  FActive := False;
+
   if Assigned(TimerMarquee) then begin
     TimerMarquee.Enabled := False;
     TimerMarquee.Free;
@@ -191,7 +193,9 @@ end;
 procedure TChasePanel.TimerResizeTick(Sender: TObject);
 //recria os objetos após o evento Resize
 begin
-  if (not FUpdatingSize and not FExecutando and ((FWidth <> Width) or (FHeight <> Height))) then
+  //if FExecutando then exit;
+  if FUpdatingSize then exit;
+  if (FWidth <> Width) or (FHeight <> Height) then
   begin
     TimerResize.Interval := 1500;
     FWidth  := Width;
@@ -215,6 +219,8 @@ begin
   //limites
   Width_Panel  := Width - FElementSize;
   Heigth_Panel := Height - FElementSize;
+  F_MaxX := Width_Panel;
+  F_MaxY := Heigth_Panel;
 
   //1. Borda Superior (move para a direita)
   i := 0;
@@ -283,6 +289,7 @@ begin
 
   FUpdatingSize := False;
   TimerMarquee.Enabled := FActive;
+  TimerResize.Enabled := True;
 end;
 
 procedure TChasePanel.Marquee_Destroy;
@@ -393,9 +400,9 @@ end;
 procedure TChasePanel.Resize;
 //evento de resize do componente
 begin
-  inherited Resize;
   if Height < 172 then Height := 172;
   if Width < 292 then Width := 292;
+  inherited Resize;
 end;
 
 end.
