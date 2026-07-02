@@ -19,3 +19,7 @@ Components Packages for Lazarus / FreePascal
 - SplitViewButtonPackage: Botão específico para o SplitViewPackage.
 - ToggleButtonPlusPackage: Chequebox no estilo toggle como no celular.
 - Pasta Utils: Utilitários para Thread, Imagem (banco de dados), validação de campos, etc.
+
+<br>
+
+![Exemplo](modernui.png)
