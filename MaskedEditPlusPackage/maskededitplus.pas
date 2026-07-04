@@ -1346,13 +1346,16 @@ begin
 end;
 
 procedure TMaskedEditPlus.ValidaTelefone;
-//checa se o telefone está no formatdo correto
+// Checa se o telefone está no formatdo correto
+// (17) 98501-3589 ou (17) 3321-6018 -> com 11 ou 10 dígitos
+var
+  s: string;
 begin
   Hint := FHintTemp;
   FIsValid := True;
-
-  if (FEditMode = emPhone) and (Length(FEdit.Text) > 0) then begin
-    if (Length(FEdit.Text) <> 11) and (Length(FEdit.Text) <> 9) and (Length(FEdit.Text) <> 8) then begin
+  s := OnlyNumbers(FEdit.Text);
+  if (FEditMode = emPhone) and (Length(s) > 0) then begin
+    if (Length(s) <> 11) and (Length(s) <> 10) then begin
       FEdit.Font.Color := clRed;
       Hint := 'Telefone inválido';
       ShowHint := True;
@@ -1572,6 +1575,7 @@ begin
       end;
     emPhone:
       begin
+        ValidaTelefone;
         FormatInput;
       end;
      emCep:
