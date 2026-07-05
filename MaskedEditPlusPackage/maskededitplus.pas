@@ -1355,7 +1355,7 @@ begin
   FIsValid := True;
   s := OnlyNumbers(FEdit.Text);
   if (FEditMode = emPhone) and (Length(s) > 0) then begin
-    if (Length(s) <> 11) and (Length(s) <> 10) then begin
+    if (Length(s) <> 11) and (Length(s) <> 10) and (Length(s) <> 9) and (Length(s) <> 8) then begin
       FEdit.Font.Color := clRed;
       Hint := 'Telefone inválido';
       ShowHint := True;
