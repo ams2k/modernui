@@ -1,13 +1,8 @@
-unit Util.Imagem;    
-    
-{ 
- Created by Topazzio at 2025-12-24 10:53:27
- Developed by Aldo Márcio Soares  |  ams2kg@gmail.com  |  CopyLeft 2025
-} 
+unit Util.Imagem; 
 
 // Manipulação de imagens (foto) para banco de dados
 // Requer o Package BGRABitmapPack
-    
+ 
 {$mode ObjFPC}{$H+}    
     
 interface    
@@ -32,11 +27,11 @@ type
     { TZQuery: Converte a imagem (BLOB) do banco de dados para bitmap para o TImage }
     class procedure GetImage(var AImage: TImage; AQuery: TZQuery; const AFieldName: string);
     { TZQuery: Converte o bitmap do TImage para Stream para salvar no banco de dados }
-    class procedure GetStream(AImage: TImage; var AQuery: TZQuery; const AFieldName: string);
+    class procedure GetStream(AImage: TImage; var AQuery: TZQuery; const AFieldName: string; ACircularImage: Boolean = False);
     { TSQLQuery: Converte a imagem (BLOB) do banco de dados para bitmap para o TImage }
     class procedure GetImageSQLQuery(var AImage: TImage; AQuery: TSQLQuery; const AFieldName: string);
     { TSQLQuery: Converte o bitmap do TImage para Stream para salvar no banco de dados }
-    class procedure GetStreamSQLQuery(AImage: TImage; var AQuery: TSQLQuery; const AFieldName: string);
+    class procedure GetStreamSQLQuery(AImage: TImage; var AQuery: TSQLQuery; const AFieldName: string; ACircularImage: Boolean = False);
     { Altera o tamanho do TImage }
     class procedure ResizeImagem(var AImage: TImage; w, h: Integer);
     { Retorna um bitmap com as dimenões indicadas, a partir do TImage }
@@ -95,7 +90,7 @@ begin
   end;
 end;
 
-class procedure TUtilImagem.GetStream(AImage: TImage; var AQuery: TZQuery; const AFieldName: string);
+class procedure TUtilImagem.GetStream(AImage: TImage; var AQuery: TZQuery; const AFieldName: string; ACircularImage: Boolean);
 // converte a imagem do TImage para Stream e carrega no zquery para salvar no banco de dados
 var
   Stream: TMemoryStream;
@@ -109,7 +104,7 @@ begin
     AQuery.ParamByName(AFieldName).IsNull;
     Exit;
   end;
-  
+ 
   Stream := TMemoryStream.Create;
   Source := TBGRABitmap.Create;
 
@@ -127,16 +122,18 @@ begin
     BGRAReplace(Resized, Resized.Resample(DestSize, DestSize));
 
     //Máscara Circular
-    Mask := TBGRABitmap.Create(DestSize, DestSize, BGRAPixelTransparent);
-    Mask.FillEllipseAntialias(DestSize/2, DestSize/2, DestSize/2, DestSize/2, BGRAWhite);
-    Resized.ApplyMask(Mask);
+    if ACircularImage then begin
+      Mask := TBGRABitmap.Create(DestSize, DestSize, BGRAPixelTransparent);
+      Mask.FillEllipseAntialias(DestSize/2, DestSize/2, DestSize/2, DestSize/2, BGRAWhite);
+      Resized.ApplyMask(Mask);
+      Mask.Free;
+    end;
 
     //SALVAR DIRETO NO STREAM EM PNG
     Resized.SaveToStreamAsPNG(Stream);
     Stream.Position := 0;
     AQuery.ParamByName(AFieldName).LoadBinaryFromStream(Stream);
 
-    Mask.Free;
     Resized.Free;
   finally
     Source.Free;
@@ -183,7 +180,7 @@ begin
   end;  
 end;  
   
-class procedure TUtilImagem.GetStreamSQLQuery(AImage: TImage; var AQuery: TSQLQuery; const AFieldName: string);  
+class procedure TUtilImagem.GetStreamSQLQuery(AImage: TImage; var AQuery: TSQLQuery; const AFieldName: string; ACircularImage: Boolean);
 // converte a imagem do TImage para Stream e carrega no sqlquery  
 var  
   Stream: TMemoryStream;
@@ -191,13 +188,13 @@ var
   MinSide, DestSize: integer;
   CropRect: TRect;
 begin  
-  //joga a foto no stream 
+  //joga a foto no stream  
   DestSize := AImage.Picture.Bitmap.Width;
   if DestSize = 0 then begin
     AQuery.ParamByName(AFieldName).IsNull;
     Exit;
   end;
-
+ 
   Stream := TMemoryStream.Create;
   Source := TBGRABitmap.Create;
 
@@ -215,16 +212,18 @@ begin
     BGRAReplace(Resized, Resized.Resample(DestSize, DestSize));
 
     //Máscara Circular
-    Mask := TBGRABitmap.Create(DestSize, DestSize, BGRAPixelTransparent);
-    Mask.FillEllipseAntialias(DestSize/2, DestSize/2, DestSize/2, DestSize/2, BGRAWhite);
-    Resized.ApplyMask(Mask);
+    if ACircularImage then begin
+      Mask := TBGRABitmap.Create(DestSize, DestSize, BGRAPixelTransparent);
+      Mask.FillEllipseAntialias(DestSize/2, DestSize/2, DestSize/2, DestSize/2, BGRAWhite);
+      Resized.ApplyMask(Mask);
+      Mask.Free;
+    end;
 
     //SALVAR DIRETO NO STREAM EM PNG
     Resized.SaveToStreamAsPNG(Stream);
     Stream.Position := 0;
     AQuery.ParamByName(AFieldName).LoadFromStream(Stream, ftBlob);
 
-    Mask.Free;
     Resized.Free;
   finally
     Source.Free;
