@@ -9,7 +9,7 @@ uses
   LResources, ExtCtrls, StdCtrls, ImgList, Math;
 
 type
-  TButtonPlusStyle = (mbsPrimary, mbsSuccess, mbsDanger, mbsFlat, mbsOutlined, mbsNormal);
+  TButtonPlusStyle = (mbsPrimary, mbsSuccess, mbsDanger, mbsFlat, mbsOutlined, mbsNormal, mbsGray);
 
   { TButtonPlus }
 
@@ -109,7 +109,7 @@ type
 
     property Caption: String read FCaption write SetCaption;
     property CaptionAlignment: TAlignment read FCaptionAlignment write SetCaptionAlignment;
-    property Style: TButtonPlusStyle read FStyle write SetStyle default mbsFlat;
+    property Style: TButtonPlusStyle read FStyle write SetStyle default mbsPrimary;
 
     property Images: TCustomImageList read FImages write FImages;
     property ImageIndex: Integer read FImageIndex write SetImageIndex default -1;
@@ -154,8 +154,8 @@ begin
   Height := 32;
   Width := 100;
   Font.Color := clWhite;
-  Font.Name := 'Segoe UI';
-  Font.Size := 10;
+  //Font.Name := 'Segoe UI';
+  //Font.Size := 10;
   TabStop := True;
 
   FBlinkInterval := 50; // ms
@@ -169,7 +169,7 @@ begin
   FSpacing := 8;
   FCaptionAlignment := taCenter;
   FHover := False;
-  FStyle := mbsPrimary;
+  FStyle := mbsGray;
 
   FImageIndex := -1;
   FIconTransparent := False;
@@ -417,7 +417,7 @@ begin
       end;
     mbsOutlined:
       begin
-        FColorMouseOut := $FFE6E6E6;
+        FColorMouseOut := $00E6E6E6;
         FColorMouseIn := clNone;
         FBorderColor := $007337F5;
         FTextColor := $007337F5;
@@ -428,6 +428,16 @@ begin
         FColorMouseIn := HTMLColorToRGB('#bbbbbb');
         FBorderColor := HTMLColorToRGB('#707070');
         FTextColor := clBlack;
+      end;
+    mbsGray:
+      begin
+        FColorMouseOut := clGray;
+        FColorMouseIn := clGray;
+        FBorderColor := clSkyBlue;
+        FTextColor := clWhite;
+        FUseGradient := True;
+        FIconTransparent := True;
+        FImage.Transparent := True;
       end;
   end;
 end;
@@ -605,7 +615,8 @@ begin
   iLimite := 0;
 
   // pinta o fundo da área do ícone
-  if (FIconVisible) and (FIconWidth > 0) and (not FIconTransparent) then begin
+  if FIconVisible and (FIconWidth > 0) and not FIconTransparent then
+  begin
     iLimite := FImage.Left + FIconWidth + 1;
     R.Right := iLimite;
     Canvas.Brush.Style := bsSolid;
@@ -622,7 +633,8 @@ begin
     Canvas.Brush.Color := FColorMouseOut;
 
   // cor de fundo
-  if (FUseGradient) and (not FHover) and (FColorMouseOut <> clNone) then begin
+  if FUseGradient and not FHover and (FColorMouseOut <> clNone) then
+  begin
     // gradiente de fundo dos títulos
     Color1 := FColorMouseOut;
     Color2 := LightenColor(FColorMouseOut, 55);
@@ -631,7 +643,9 @@ begin
     R := Rect(iLimite, 0, Width - 1, Height - 1);
     Canvas.Pen.Style := psSolid;
     Canvas.GradientFill(R, Color1, Color2, gdVertical);
-  end else begin
+  end
+  else
+  begin
     // fundo sem gradiente
     R := Rect(iLimite, 0, Width - 1, Height - 1);
     Canvas.Brush.Style := bsSolid;
@@ -640,13 +654,15 @@ begin
   end;
 
   // Definição de borda
-  if FStyle = mbsOutlined then begin
+  if (FStyle = mbsOutlined) then
+  begin
     Canvas.Brush.Style := bsClear;
     Canvas.Pen.Style := FBorderLineStyle;
     Canvas.Pen.Color := FTextColor;
     Canvas.Pen.Width := FBorderLineWidth;
   end
-  else if FBorderEnabled then begin
+  else if FBorderEnabled then
+  begin
     Canvas.Brush.Style := bsClear;
     Canvas.Pen.Style := FBorderLineStyle;
     Canvas.Pen.Color := FBorderColor;
@@ -656,19 +672,19 @@ begin
   // pinta a borda
   R := ClientRect;
 
-  if FCornerRadius > 0 then
+  if (FCornerRadius > 0) then
     Canvas.RoundRect(R, FCornerRadius, FCornerRadius)
   else
     Canvas.Rectangle(R);
 
   // para o texto
+  R.Left := 8;
+
   if FIconVisible then
-    R.Left := 4 + FImage.Width + FSpacing
-  else
-    R.Left := 8;
+    R.Left := 4 + FImage.Width + FSpacing;
 
   R.Right := Width - 1;
-  // Texto
+
   Canvas.Font.Color := FTextColor;
   Canvas.Brush.Style := bsClear;
   DrawCaptionText(Canvas, R, FCaption, FCaptionAlignment);
