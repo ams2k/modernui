@@ -21,7 +21,7 @@ type
     FBorderTop: Boolean;
     FBorderWidth: Integer;
     FBorderStyle: TPenStyle;
-    FBorderRadius: Integer;
+    FBorderSizeRadius: Integer;
     FIcon: TPicture;
     FIconVisible: Boolean;
     FImageIndex: Integer;
@@ -66,6 +66,7 @@ type
   published
     property Action;
     property Caption;
+    property ParentColor;
     property Images: TCustomImageList read FImages write FImages;
     property ImageIndex: Integer read FImageIndex write FImageIndex default -1;
     property Icon: TPicture read FIcon write SetIcon;
@@ -76,7 +77,7 @@ type
     property BorderTop: Boolean read FBorderTop write SetBorderTop default False;
     property BorderBottom: Boolean read FBorderBottom write SetBorderBottom default False;
     property BorderColor: TColor read FBorderColor write SetBorderColor default clGray;
-    property BorderRadius: Integer read FBorderRadius write SetBorderRadius default 12;
+    property BorderRadius: Integer read FBorderSizeRadius write SetBorderRadius default 0; //12
     property BorderStyle: TPenStyle read FBorderStyle write SetBorderStyle default psSolid;
     property BorderWidth: Integer read FBorderWidth write SetBorderWidth default 1;
     property ShowGradient: Boolean read FGradient write SetGradient default False;
@@ -121,7 +122,7 @@ begin
   FBorderBottom := False;
   FBorderEnabled := False;
   FBorderColor := clGray;
-  FBorderRadius := 0;
+  FBorderSizeRadius := 0;
   FBorderStyle := psSolid;
   FBorderWidth := 1;
 
@@ -243,8 +244,8 @@ end;
 
 procedure TLabelPlus.SetBorderRadius(AValue: Integer);
 begin
-  if FBorderRadius = AValue then Exit;
-  FBorderRadius := AValue;
+  if FBorderSizeRadius = AValue then Exit;
+  FBorderSizeRadius := AValue;
   Invalidate;
 end;
 
@@ -326,40 +327,60 @@ end;
 procedure TLabelPlus.Paint;
 var
   R: TRect;
-  IconTop, TextTop, TotalHeight: Integer;
+  Radius, IconTop, TextTop, TotalHeight: Integer;
   bIconVisible: Boolean;
   TextSize: TSize;
   IconSpace, IconW, IconH: Integer;
   ContentLeft, lBorderCounter: Integer;
 begin
-  Canvas.Font := Font;
-  Canvas.Brush.Style := bsSolid;
+  inherited Paint;
+
+  // gradiente não respeita borda com radius
 
   R := ClientRect;
+  Canvas.Font := Font;
+
+  //para evitar "fantasmas" nos cantos
+  Canvas.Brush.Color := Parent.Color;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.FillRect(R);
+
+  // Limita o raio para que ele nunca ultrapasse metade
+  // da largura ou altura do componente.
+  Radius := FBorderSizeRadius;
+
+  if Radius < 0 then Radius := 0;
+  if Radius > R.Width div 2 then Radius := R.Width div 2;
+  if Radius > R.Height div 2 then Radius := R.Height div 2;
+
   lBorderCounter := BorderCounter();
+  Canvas.Brush.Color := Color;
 
   // preenchimento com a cor de fundo
   if FGradient then begin
     //com gradiente
     Canvas.Pen.Style := psSolid;
     Canvas.GradientFill(R, FGradientColorOne, FGradientColorTwo, gdVertical);
-  end else begin
+  end
+  else begin
     //sem gradiente
-    Canvas.Brush.Color := Color;
-    Canvas.FillRect(R);
+    if Radius > 0 then
+        Canvas.RoundRect(R, Radius, Radius)
+    else
+        Canvas.FillRect(R);
   end;
 
   // borda do componente
-  if (lBorderCounter > 0) then begin
+  if lBorderCounter > 0 then begin
     Canvas.Pen.Style := FBorderStyle;
     Canvas.Pen.Color := FBorderColor;
     Canvas.Pen.Width := FBorderWidth;
     Canvas.Brush.Style := bsClear;
 
-    if (lBorderCounter = 4) then begin
+    if lBorderCounter = 4 then begin
       //borda completa
-      if FBorderRadius > 0 then
-        Canvas.RoundRect(R, FBorderRadius, FBorderRadius)
+      if Radius > 0 then
+        Canvas.RoundRect(R, Radius, Radius)
       else
         Canvas.Rectangle(R);
     end

@@ -18,10 +18,12 @@ type
     FBorderLineEnabled: Boolean;
     FBorderLineRadius: Integer;
     FBorderLineStyle: TPenStyle;
+    FGradient: Boolean;
     procedure SetBorderLIneColor(AValue: TColor);
     procedure SetBorderLineEnabled(AValue: Boolean);
     procedure SetBorderLineRadius(AValue: Integer);
     procedure SetBorderLineStyle(AValue: TPenStyle);
+    procedure SetGradient(AValue: Boolean);
 
   protected
     procedure Paint; override;
@@ -32,6 +34,7 @@ type
     property BorderLineColor: TColor read FBorderLineColor write SetBorderLineColor default clGray;
     property BorderLineRadius: Integer read FBorderLineRadius write SetBorderLineRadius default 12;
     property BorderLineStyle: TPenStyle read FBorderLineStyle write SetBorderLineStyle default psSolid;
+    property ShowGradient: Boolean read FGradient write SetGradient default False;
   end;
 
 procedure Register;
@@ -99,22 +102,45 @@ begin
   Invalidate;
 end;
 
+procedure TPanelPlus.SetGradient(AValue: Boolean);
+begin
+  if FGradient = AValue then Exit;
+  FGradient := AValue;
+  Invalidate;
+end;
+
 procedure TPanelPlus.Paint;
 begin
   inherited Paint;
 
+  // gradiente não respeita borda com radius
+
+  Canvas.Brush.Color := Parent.Color;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.FillRect(ClientRect);
+
   Canvas.Font := Font;
-  Canvas.Brush.Style := bsClear;
+  //Canvas.Brush.Style := bsClear;
+
+  Canvas.Brush.Color := Color;
+  Canvas.Brush.Style := bsSolid;
 
   if FBorderLineEnabled and (BorderStyle = bsNone) then begin
     Canvas.Pen.Style := FBorderLineStyle;
     Canvas.Pen.Color := FBorderLineColor;
     Canvas.Pen.Width := BorderWidth;
 
-    if FBorderLineRadius > 0 then
-      Canvas.RoundRect(ClientRect, FBorderLineRadius, FBorderLineRadius)
-    else
-      Canvas.Rectangle(ClientRect);
+    if FGradient then begin
+       //com gradiente
+       Canvas.Pen.Style := psSolid;
+       Canvas.GradientFill(ClientRect, Color, clWhite, gdVertical);
+    end
+    else begin
+      if FBorderLineRadius > 0 then
+        Canvas.RoundRect(ClientRect, FBorderLineRadius, FBorderLineRadius)
+      else
+        Canvas.Rectangle(ClientRect);
+    end;
   end;
 end;
 
